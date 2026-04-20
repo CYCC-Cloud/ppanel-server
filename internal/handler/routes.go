@@ -34,6 +34,7 @@ import (
 	publicTicket "github.com/perfect-panel/server/internal/handler/public/ticket"
 	publicUser "github.com/perfect-panel/server/internal/handler/public/user"
 	server "github.com/perfect-panel/server/internal/handler/server"
+	serverv2 "github.com/perfect-panel/server/internal/handler/serverv2"
 	"github.com/perfect-panel/server/internal/middleware"
 	"github.com/perfect-panel/server/internal/svc"
 )
@@ -888,10 +889,10 @@ func RegisterHandlers(router *gin.Engine, serverCtx *svc.ServiceContext) {
 		serverGroupRouter.GET("/user", server.GetServerUserListHandler(serverCtx))
 	}
 
-	serverV2GroupRouter := router.Group("/v2/server")
+	serverv2GroupRouter := router.Group("/v2/server")
 
 	{
 		// Get Server Protocol Config
-		serverV2GroupRouter.GET("/:server_id", server.QueryServerProtocolConfigHandler(serverCtx))
+		serverv2GroupRouter.GET("/:server_id", serverv2.QueryServerProtocolConfigHandler(serverCtx))
 	}
 }
