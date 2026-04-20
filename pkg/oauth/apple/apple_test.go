@@ -10,6 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	testTeamID       = "test-team-id"
+	testClientID     = "test-client-id"
+	testKeyID        = "test-key-id"
+	testClientSecret = "test-client-secret"
+)
+
 func TestAppleLogin(t *testing.T) {
 	t.Skipf("Skip TestAppleLogin test")
 	router := gin.Default()
@@ -35,10 +42,10 @@ func handleAppleCallBack(ctx context.Context, request CallbackRequest) {
 	fmt.Printf("request: %+v\n", request)
 	// validate the token
 	client, err := New(Config{
-		TeamID:       TeamID,
-		ClientID:     ClientID,
-		KeyID:        KeyID,
-		ClientSecret: ClientSecret,
+		TeamID:       testTeamID,
+		ClientID:     testClientID,
+		KeyID:        testKeyID,
+		ClientSecret: testClientSecret,
 		RedirectURI:  "https://test.ppanel.dev:8443/auth/apple/callback",
 	})
 	if err != nil {
