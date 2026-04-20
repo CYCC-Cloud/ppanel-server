@@ -1,46 +1,61 @@
 package adapter
 
-import (
-	"testing"
+import "github.com/perfect-panel/server/internal/model/node"
 
-	"github.com/perfect-panel/server/internal/model/server"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-)
-
-func TestAdapterProxy(t *testing.T) {
-
-	servers := getServers()
-	if len(servers) == 0 {
-		t.Fatal("no servers found")
+func testNodes() []*node.Node {
+	return []*node.Node{
+		{
+			Id:       1,
+			Name:     "Trojan Node",
+			Tags:     "premium,hk",
+			Port:     443,
+			Address:  "node.example.com",
+			ServerId: 10,
+			Protocol: "trojan",
+			Sort:     2,
+			Server: &node.Server{
+				Id: 10,
+				Protocols: `[
+					{
+						"type":"trojan",
+						"listener_key":"trojan-main",
+						"port":443,
+						"enable":true,
+						"security":"tls",
+						"sni":"edge.example.com",
+						"allow_insecure":true,
+						"fingerprint":"chrome"
+					},
+					{
+						"type":"vmess",
+						"listener_key":"vmess-unused",
+						"port":8443,
+						"enable":true
+					}
+				]`,
+			},
+		},
+		{
+			Id:       2,
+			Name:     "Broken Node",
+			Port:     80,
+			Address:  "broken.example.com",
+			ServerId: 11,
+			Protocol: "vless",
+			Sort:     3,
+			Server: &node.Server{
+				Id:        11,
+				Protocols: `{"invalid":true}`,
+			},
+		},
+		{
+			Id:       3,
+			Name:     "Missing Server",
+			Port:     1234,
+			Address:  "missing.example.com",
+			ServerId: 12,
+			Protocol: "shadowsocks",
+			Sort:     4,
+		},
 	}
-	for _, srv := range servers {
-		proxy, err := adapterProxy(*srv, "example.com", 0)
-		if err != nil {
-			t.Errorf("failed to adapt server %s: %v", srv.Name, err)
-		}
-		t.Logf("[测试] 适配服务器 %s 成功: %+v", srv.Name, proxy)
-	}
-
-}
-
-func getServers() []*server.Server {
-	db, err := connectMySQL("root:mylove520@tcp(localhost:3306)/perfectlink?charset=utf8mb4&parseTime=True&loc=Local")
-	if err != nil {
-		return nil
-	}
-	var servers []*server.Server
-	if err = db.Model(&server.Server{}).Find(&servers).Error; err != nil {
-		return nil
-	}
-	return servers
-}
-func connectMySQL(dsn string) (*gorm.DB, error) {
-	db, err := gorm.Open(mysql.New(mysql.Config{
-		DSN: dsn,
-	}), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
 }
