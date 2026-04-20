@@ -1,4 +1,4 @@
-package server
+package serverv2
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/perfect-panel/server/internal/logic/server"
+	"github.com/perfect-panel/server/internal/logic/serverv2"
 	"github.com/perfect-panel/server/internal/svc"
 	"github.com/perfect-panel/server/internal/types"
 	"github.com/perfect-panel/server/pkg/logger"
@@ -42,7 +42,7 @@ func QueryServerProtocolConfigHandler(svcCtx *svc.ServiceContext) func(c *gin.Co
 			return
 		}
 
-		l := server.NewQueryServerProtocolConfigLogic(c.Request.Context(), svcCtx)
+		l := serverv2.NewQueryServerProtocolConfigLogic(c.Request.Context(), svcCtx)
 		resp, err := l.QueryServerProtocolConfig(&req)
 		result.HttpResult(c, resp, err)
 	}

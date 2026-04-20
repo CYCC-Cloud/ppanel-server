@@ -138,7 +138,7 @@ service ppanel {
 
 @server (
 	prefix: v2/server
-	group:  server
+	group:  serverv2
 )
 service ppanel {
 	@doc "Get Server Protocol Config"
