@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/perfect-panel/server/pkg/logger"
@@ -69,15 +70,25 @@ func (m *Server) BeforeUpdate(tx *gorm.DB) error {
 
 // MarshalProtocols Marshal server protocols to json
 func (m *Server) MarshalProtocols(list []Protocol) error {
-	var validate = make(map[string]bool)
+	listenerKeys := make(map[string]bool)
+	enabledPorts := make(map[uint16]bool)
 	for _, protocol := range list {
 		if protocol.Type == "" {
 			return errors.New("protocol type is required")
 		}
-		if _, exists := validate[protocol.Type]; exists {
-			return errors.New("duplicate protocol type: " + protocol.Type)
+		if protocol.ListenerKey == "" {
+			return errors.New("listener key is required")
 		}
-		validate[protocol.Type] = true
+		if listenerKeys[protocol.ListenerKey] {
+			return errors.New("duplicate listener key: " + protocol.ListenerKey)
+		}
+		listenerKeys[protocol.ListenerKey] = true
+		if protocol.Enable {
+			if enabledPorts[protocol.Port] {
+				return errors.New(fmt.Sprintf("duplicate enabled port: %d", protocol.Port))
+			}
+			enabledPorts[protocol.Port] = true
+		}
 	}
 	data, err := json.Marshal(list)
 	if err != nil {
@@ -102,6 +113,8 @@ func (m *Server) UnmarshalProtocols() ([]Protocol, error) {
 
 type Protocol struct {
 	Type                    string `json:"type"`
+	ListenerKey             string `json:"listener_key"`
+	ListenerName            string `json:"listener_name,omitempty"`
 	Port                    uint16 `json:"port"`
 	Enable                  bool   `json:"enable"`
 	Security                string `json:"security,omitempty"`
