@@ -3,7 +3,7 @@ package traffic
 import (
 	"context"
 	"encoding/json"
-	"strings"
+	"errors"
 	"time"
 
 	"github.com/perfect-panel/server/internal/model/node"
@@ -56,25 +56,14 @@ func (l *TrafficStatisticsLogic) ProcessTask(ctx context.Context, task *asynq.Ta
 		logger.Errorf("[TrafficStatistics] Unmarshal protocols failed: %s", err.Error())
 		return nil
 	}
-	var protocol *node.Protocol
-
-	var ratio float32 = 1.0
-
-	for _, p := range protocols {
-		if strings.ToLower(p.Type) == strings.ToLower(payload.Protocol) {
-			protocol = &p
-			break
-		}
-	}
-
-	if protocol == nil {
-		logger.WithContext(ctx).Error("[TrafficStatistics] Protocol not found: %s", payload.Protocol)
+	ratio, err := ratioForListener(protocols, payload.ListenerKey)
+	if err != nil {
+		logger.WithContext(ctx).Error("[TrafficStatistics] Listener not found",
+			logger.Field("serverId", payload.ServerId),
+			logger.Field("listenerKey", payload.ListenerKey),
+			logger.Field("error", err.Error()),
+		)
 		return nil
-	}
-
-	// use protocol ratio if it's greater than 0
-	if protocol.Ratio > 0 {
-		ratio = float32(protocol.Ratio)
 	}
 
 	now := time.Now()
@@ -126,4 +115,25 @@ func (l *TrafficStatisticsLogic) ProcessTask(ctx context.Context, task *asynq.Ta
 		}
 	}
 	return nil
+}
+
+func ratioForListener(protocols []node.Protocol, listenerKey string) (float32, error) {
+	listener, err := findListener(protocols, listenerKey)
+	if err != nil {
+		return 0, err
+	}
+	if listener.Ratio > 0 {
+		return float32(listener.Ratio), nil
+	}
+	return 1.0, nil
+}
+
+func findListener(protocols []node.Protocol, listenerKey string) (*node.Protocol, error) {
+	for i := range protocols {
+		if protocols[i].ListenerKey == listenerKey {
+			return &protocols[i], nil
+		}
+	}
+
+	return nil, errors.New("listener not found")
 }

@@ -41,19 +41,43 @@ func (l *FilterNodeListLogic) FilterNodeList(req *types.FilterNodeListRequest) (
 	}
 
 	list := make([]types.Node, 0)
+	serverListeners := make(map[int64]map[string]node.Protocol)
 	for _, datum := range data {
+		listeners, ok := serverListeners[datum.ServerId]
+		if !ok {
+			serverInfo, findErr := l.svcCtx.NodeModel.FindOneServer(l.ctx, datum.ServerId)
+			if findErr != nil {
+				l.Errorw("[FilterNodeList] Query Server Error: ", logger.Field("error", findErr.Error()), logger.Field("server_id", datum.ServerId))
+				listeners = map[string]node.Protocol{}
+			} else {
+				protocols, unmarshalErr := serverInfo.UnmarshalProtocols()
+				if unmarshalErr != nil {
+					l.Errorw("[FilterNodeList] Unmarshal Protocols Error: ", logger.Field("error", unmarshalErr.Error()), logger.Field("server_id", datum.ServerId))
+					listeners = map[string]node.Protocol{}
+				} else {
+					listeners = make(map[string]node.Protocol, len(protocols))
+					for _, protocol := range protocols {
+						listeners[protocol.ListenerKey] = protocol
+					}
+				}
+			}
+			serverListeners[datum.ServerId] = listeners
+		}
+		listener := listeners[datum.ListenerKey]
 		list = append(list, types.Node{
-			Id:        datum.Id,
-			Name:      datum.Name,
-			Tags:      tool.RemoveDuplicateElements(strings.Split(datum.Tags, ",")...),
-			Port:      datum.Port,
-			Address:   datum.Address,
-			ServerId:  datum.ServerId,
-			Protocol:  datum.Protocol,
-			Enabled:   datum.Enabled,
-			Sort:      datum.Sort,
-			CreatedAt: datum.CreatedAt.UnixMilli(),
-			UpdatedAt: datum.UpdatedAt.UnixMilli(),
+			Id:           datum.Id,
+			Name:         datum.Name,
+			Tags:         tool.RemoveDuplicateElements(strings.Split(datum.Tags, ",")...),
+			Port:         datum.Port,
+			Address:      datum.Address,
+			ServerId:     datum.ServerId,
+			Protocol:     datum.Protocol,
+			ListenerKey:  datum.ListenerKey,
+			ListenerName: listener.ListenerName,
+			Enabled:      datum.Enabled,
+			Sort:         datum.Sort,
+			CreatedAt:    datum.CreatedAt.UnixMilli(),
+			UpdatedAt:    datum.UpdatedAt.UnixMilli(),
 		})
 	}
 

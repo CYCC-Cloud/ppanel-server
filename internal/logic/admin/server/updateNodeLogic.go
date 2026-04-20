@@ -36,10 +36,21 @@ func (l *UpdateNodeLogic) UpdateNode(req *types.UpdateNodeRequest) error {
 	data.Name = req.Name
 	data.Tags = tool.StringSliceToString(req.Tags)
 	data.ServerId = req.ServerId
-	data.Port = req.Port
 	data.Address = req.Address
-	data.Protocol = req.Protocol
 	data.Enabled = req.Enabled
+	serverInfo, err := l.svcCtx.NodeModel.FindOneServer(l.ctx, req.ServerId)
+	if err != nil {
+		l.Errorw("[UpdateNode] Query Server Error: ", logger.Field("error", err.Error()))
+		return errors.Wrapf(xerr.NewErrCode(xerr.DatabaseQueryError), "[UpdateNode] Query Server Error")
+	}
+	protocols, err := serverInfo.UnmarshalProtocols()
+	if err != nil {
+		l.Errorw("[UpdateNode] Unmarshal Protocols Error: ", logger.Field("error", err.Error()))
+		return errors.Wrapf(xerr.NewErrCodeMsg(xerr.InvalidParams, "invalid server protocols"), "[UpdateNode] Unmarshal Protocols Error")
+	}
+	if err = applyListenerToNode(data, protocols, req.ListenerKey); err != nil {
+		return errors.Wrapf(xerr.NewErrCodeMsg(xerr.InvalidParams, err.Error()), "[UpdateNode] %s", err.Error())
+	}
 	err = l.svcCtx.NodeModel.UpdateNode(l.ctx, data)
 	if err != nil {
 		l.Errorw("[UpdateNode] Update Database Error: ", logger.Field("error", err.Error()))

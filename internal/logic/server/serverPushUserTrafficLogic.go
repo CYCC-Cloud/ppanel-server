@@ -31,17 +31,25 @@ func NewServerPushUserTrafficLogic(ctx context.Context, svcCtx *svc.ServiceConte
 }
 
 func (l *ServerPushUserTrafficLogic) ServerPushUserTraffic(req *types.ServerPushUserTrafficRequest) error {
+	if req.ListenerKey == "" {
+		return errors.New("listener_key is required")
+	}
+
 	// Find server info
 	serverInfo, err := l.svcCtx.NodeModel.FindOneServer(l.ctx, req.ServerId)
 	if err != nil {
 		l.Errorw("[PushOnlineUsers] FindOne error", logger.Field("error", err))
 		return errors.New("server not found")
 	}
+	if err = validateServerListenerKey(serverInfo, req.ListenerKey); err != nil {
+		return err
+	}
 
 	// Create traffic task
 	var request task.TrafficStatistics
 	request.ServerId = serverInfo.Id
 	request.Protocol = req.Protocol
+	request.ListenerKey = req.ListenerKey
 	tool.DeepCopy(&request.Logs, req.Traffic)
 
 	// Push traffic task

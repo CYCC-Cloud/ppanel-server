@@ -9,9 +9,10 @@ type UserTraffic struct {
 }
 
 type TrafficStatistics struct {
-	ServerId int64         `json:"server_id"`
-	Protocol string        `json:"protocol"`
-	Logs     []UserTraffic `json:"logs"`
+	ServerId    int64         `json:"server_id"`
+	Protocol    string        `json:"protocol"`
+	ListenerKey string        `json:"listener_key"`
+	Logs        []UserTraffic `json:"logs"`
 }
 
 type NodeStatus struct {

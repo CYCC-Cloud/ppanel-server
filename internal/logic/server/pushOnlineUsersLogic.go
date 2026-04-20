@@ -27,6 +27,10 @@ func NewPushOnlineUsersLogic(ctx context.Context, svcCtx *svc.ServiceContext) *P
 }
 
 func (l *PushOnlineUsersLogic) PushOnlineUsers(req *types.OnlineUsersRequest) error {
+	if req.ListenerKey == "" {
+		return errors.New("listener_key is required")
+	}
+
 	// 验证请求数据
 	if req.ServerId <= 0 || len(req.Users) == 0 {
 		return errors.New("invalid request parameters")
@@ -40,10 +44,13 @@ func (l *PushOnlineUsersLogic) PushOnlineUsers(req *types.OnlineUsersRequest) er
 	}
 
 	// Find server info
-	_, err := l.svcCtx.NodeModel.FindOneServer(l.ctx, req.ServerId)
+	serverInfo, err := l.svcCtx.NodeModel.FindOneServer(l.ctx, req.ServerId)
 	if err != nil {
 		l.Errorw("[PushOnlineUsers] FindOne error", logger.Field("error", err))
 		return fmt.Errorf("server not found: %w", err)
+	}
+	if err = validateServerListenerKey(serverInfo, req.ListenerKey); err != nil {
+		return err
 	}
 
 	onlineUsers := make(node.OnlineUserSubscribe)
@@ -57,7 +64,7 @@ func (l *PushOnlineUsersLogic) PushOnlineUsers(req *types.OnlineUsersRequest) er
 			onlineUsers[user.SID] = []string{user.IP}
 		}
 	}
-	err = l.svcCtx.NodeModel.UpdateOnlineUserSubscribe(l.ctx, req.ServerId, req.Protocol, onlineUsers)
+	err = l.svcCtx.NodeModel.UpdateOnlineUserSubscribe(l.ctx, req.ServerId, req.ListenerKey, onlineUsers)
 	if err != nil {
 		l.Errorw("[PushOnlineUsers] cache operation error", logger.Field("error", err))
 		return err

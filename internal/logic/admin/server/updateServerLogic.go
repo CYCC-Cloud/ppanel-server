@@ -38,6 +38,11 @@ func (l *UpdateServerLogic) UpdateServer(req *types.UpdateServerRequest) error {
 	data.Name = req.Name
 	data.Country = req.Country
 	data.City = req.City
+	existingProtocols, err := data.UnmarshalProtocols()
+	if err != nil {
+		l.Errorf("[UpdateServer] UnmarshalProtocols Error: %v", err.Error())
+		return errors.Wrapf(xerr.NewErrCode(xerr.DatabaseQueryError), "unmarshal protocols error: %v", err.Error())
+	}
 	// only update address when it's  different
 	if req.Address != data.Address {
 		// query server ip location
@@ -98,6 +103,7 @@ func (l *UpdateServerLogic) UpdateServer(req *types.UpdateServerRequest) error {
 		}
 		protocols = append(protocols, protocol)
 	}
+	ensureListenerKeys(protocols, existingProtocols)
 	err = data.MarshalProtocols(protocols)
 	if err != nil {
 		l.Errorf("[UpdateServer] Marshal Protocols Error: %v", err.Error())

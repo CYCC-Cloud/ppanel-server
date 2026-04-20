@@ -85,10 +85,10 @@ func (l *FilterServerListLogic) handlerServerStatus(id int64, protocols []types.
 
 	for _, protocol := range protocols {
 		// query online user
-		data, err := l.svcCtx.NodeModel.OnlineUserSubscribe(l.ctx, id, protocol.Type)
+		data, err := l.svcCtx.NodeModel.OnlineUserSubscribe(l.ctx, id, protocol.ListenerKey)
 		if err != nil {
 			if !errors.Is(err, redis.Nil) {
-				l.Errorw("[handlerServerStatus] OnlineUserSubscribe Error: ", logger.Field("error", err.Error()), logger.Field("node_id", id), logger.Field("protocol", protocol.Type))
+				l.Errorw("[handlerServerStatus] OnlineUserSubscribe Error: ", logger.Field("error", err.Error()), logger.Field("node_id", id), logger.Field("listener_key", protocol.ListenerKey))
 			}
 			continue
 		}

@@ -85,6 +85,7 @@ func (l *CreateServerLogic) CreateServer(req *types.CreateServerRequest) error {
 		}
 		protocols = append(protocols, protocol)
 	}
+	ensureListenerKeys(protocols, nil)
 
 	err := data.MarshalProtocols(protocols)
 	if err != nil {

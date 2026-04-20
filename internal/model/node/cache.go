@@ -14,8 +14,8 @@ type (
 	customCacheLogicModel interface {
 		StatusCache(ctx context.Context, serverId int64) (Status, error)
 		UpdateStatusCache(ctx context.Context, serverId int64, status *Status) error
-		OnlineUserSubscribe(ctx context.Context, serverId int64, protocol string) (OnlineUserSubscribe, error)
-		UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, protocol string, subscribe OnlineUserSubscribe) error
+		OnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string) (OnlineUserSubscribe, error)
+		UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string, subscribe OnlineUserSubscribe) error
 		OnlineUserSubscribeGlobal(ctx context.Context) (int64, error)
 		UpdateOnlineUserSubscribeGlobal(ctx context.Context, subscribe OnlineUserSubscribe) error
 	}
@@ -55,7 +55,7 @@ func (s *Status) Unmarshal(data string) error {
 const (
 	Expiry                                = 300 * time.Second              // Cache expiry time in seconds
 	StatusCacheKey                        = "node:status:%d"               // Node status cache key format (Server ID and protocol) Example: node:status:1:shadowsocks
-	OnlineUserCacheKeyWithSubscribe       = "node:online:subscribe:%d:%s"  // Online user subscribe cache key format (Server ID and protocol) Example: node:online:subscribe:1:shadowsocks
+	OnlineUserCacheKeyWithSubscribe       = "node:online:subscribe:%d:%s"  // Online user subscribe cache key format (Server ID and listener key) Example: node:online:subscribe:1:listener-a
 	OnlineUserSubscribeCacheKeyWithGlobal = "node:online:subscribe:global" // Online user global subscribe cache key
 )
 
@@ -92,8 +92,8 @@ func (m *customServerModel) StatusCache(ctx context.Context, serverId int64) (St
 }
 
 // OnlineUserSubscribe Get online user subscribe
-func (m *customServerModel) OnlineUserSubscribe(ctx context.Context, serverId int64, protocol string) (OnlineUserSubscribe, error) {
-	key := fmt.Sprintf(OnlineUserCacheKeyWithSubscribe, serverId, protocol)
+func (m *customServerModel) OnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string) (OnlineUserSubscribe, error) {
+	key := fmt.Sprintf(OnlineUserCacheKeyWithSubscribe, serverId, listenerKey)
 	result, err := m.Cache.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -110,8 +110,8 @@ func (m *customServerModel) OnlineUserSubscribe(ctx context.Context, serverId in
 }
 
 // UpdateOnlineUserSubscribe Update online user subscribe
-func (m *customServerModel) UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, protocol string, subscribe OnlineUserSubscribe) error {
-	key := fmt.Sprintf(OnlineUserCacheKeyWithSubscribe, serverId, protocol)
+func (m *customServerModel) UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string, subscribe OnlineUserSubscribe) error {
+	key := fmt.Sprintf(OnlineUserCacheKeyWithSubscribe, serverId, listenerKey)
 	data, err := json.Marshal(subscribe)
 	if err != nil {
 		return err
@@ -120,8 +120,8 @@ func (m *customServerModel) UpdateOnlineUserSubscribe(ctx context.Context, serve
 }
 
 // DeleteOnlineUserSubscribe Delete online user subscribe
-func (m *customServerModel) DeleteOnlineUserSubscribe(ctx context.Context, serverId int64, protocol string) error {
-	key := fmt.Sprintf(OnlineUserCacheKeyWithSubscribe, serverId, protocol)
+func (m *customServerModel) DeleteOnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string) error {
+	key := fmt.Sprintf(OnlineUserCacheKeyWithSubscribe, serverId, listenerKey)
 	return m.Cache.Del(ctx, key).Err()
 }
 

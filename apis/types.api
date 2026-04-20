@@ -798,6 +798,8 @@ type (
 	}
 	Protocol {
 		Type                    string  `json:"type"`
+		ListenerKey             string  `json:"listener_key"`
+		ListenerName            string  `json:"listener_name,omitempty"`
 		Port                    uint16  `json:"port"`
 		Enable                  bool    `json:"enable"`
 		Security                string  `json:"security,omitempty"`

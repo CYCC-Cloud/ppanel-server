@@ -32,12 +32,23 @@ func (l *CreateNodeLogic) CreateNode(req *types.CreateNodeRequest) error {
 		Name:     req.Name,
 		Tags:     tool.StringSliceToString(req.Tags),
 		Enabled:  req.Enabled,
-		Port:     req.Port,
 		Address:  req.Address,
 		ServerId: req.ServerId,
-		Protocol: req.Protocol,
 	}
-	err := l.svcCtx.NodeModel.InsertNode(l.ctx, &data)
+	serverInfo, err := l.svcCtx.NodeModel.FindOneServer(l.ctx, req.ServerId)
+	if err != nil {
+		l.Errorw("[CreateNode] Query Server Error: ", logger.Field("error", err.Error()))
+		return errors.Wrapf(xerr.NewErrCode(xerr.DatabaseQueryError), "[CreateNode] Query Server Error")
+	}
+	protocols, err := serverInfo.UnmarshalProtocols()
+	if err != nil {
+		l.Errorw("[CreateNode] Unmarshal Protocols Error: ", logger.Field("error", err.Error()))
+		return errors.Wrapf(xerr.NewErrCodeMsg(xerr.InvalidParams, "invalid server protocols"), "[CreateNode] Unmarshal Protocols Error")
+	}
+	if err = applyListenerToNode(&data, protocols, req.ListenerKey); err != nil {
+		return errors.Wrapf(xerr.NewErrCodeMsg(xerr.InvalidParams, err.Error()), "[CreateNode] %s", err.Error())
+	}
+	err = l.svcCtx.NodeModel.InsertNode(l.ctx, &data)
 	if err != nil {
 		l.Errorw("[CreateNode] Insert Database Error: ", logger.Field("error", err.Error()))
 		return errors.Wrapf(xerr.NewErrCode(xerr.DatabaseInsertError), "[CreateNode] Insert Database Error")
