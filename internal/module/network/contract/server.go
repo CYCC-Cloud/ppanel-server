@@ -302,8 +302,16 @@ type ServerCommon struct {
 }
 
 type ServerOnlineIP struct {
-	IP       string `json:"ip"`
+	IP string `json:"ip"`
+	// Protocol is the resolved listener's type. It stays for compatibility and
+	// cannot identify a listener on its own once a server runs several
+	// listeners of one type.
 	Protocol string `json:"protocol"`
+	// ListenerKey identifies which listener reported this address, so two
+	// listeners of the same type are never conflated.
+	ListenerKey string `json:"listener_key"`
+	// ListenerName is the listener's optional administrator-facing label.
+	ListenerName string `json:"listener_name,omitempty"`
 }
 
 type ServerOnlineUser struct {
