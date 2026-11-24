@@ -61,7 +61,7 @@ func Up(driver, dsn string) error {
 	if err != nil {
 		return err
 	}
-	return upAndClose(client)
+	return upWithFork(driver, dsn, client)
 }
 
 type migrationRunner interface {
