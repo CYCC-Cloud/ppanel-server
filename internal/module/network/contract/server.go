@@ -101,6 +101,12 @@ type OnlineUsersRequest struct {
 }
 
 type Protocol struct {
+	// ListenerKey identifies this listener inside its server. It stays stable
+	// across updates and is what every listener-scoped flow resolves by, so a
+	// server can run several listeners of the same protocol type.
+	ListenerKey string `json:"listener_key"`
+	// ListenerName is an optional administrator-facing label.
+	ListenerName string `json:"listener_name,omitempty"`
 	// Common: the protocol type, such as shadowsocks, vless, vmess, hysteria2, tuic or nowhere.
 	Type string `json:"type"`
 	// Common: the inbound listening port.
@@ -286,9 +292,13 @@ type ServerBasic struct {
 }
 
 type ServerCommon struct {
-	Protocol  string `form:"protocol"`
-	ServerId  int64  `form:"server_id"`
-	SecretKey string `form:"secret_key"`
+	// ListenerKey selects one listener of the server. Requests that omit it
+	// fall back to Protocol, which only resolves while the server runs a
+	// single listener of that type.
+	ListenerKey string `form:"listener_key,omitempty"`
+	Protocol    string `form:"protocol"`
+	ServerId    int64  `form:"server_id"`
+	SecretKey   string `form:"secret_key"`
 }
 
 type ServerOnlineIP struct {

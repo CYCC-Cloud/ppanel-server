@@ -90,7 +90,7 @@ type StatusRecorder interface {
 
 // OnlineRecorder records the users a server reports online.
 type OnlineRecorder interface {
-	UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, protocol string, subscribe node.OnlineUserSubscribe) error
+	UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string, subscribe node.OnlineUserSubscribe) error
 	UpdateOnlineUserSubscribeGlobal(ctx context.Context, subscribe node.OnlineUserSubscribe) error
 }
 

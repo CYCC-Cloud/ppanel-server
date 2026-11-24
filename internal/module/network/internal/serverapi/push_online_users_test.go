@@ -12,17 +12,17 @@ import (
 
 // onlineRecorder records what PushOnlineUsers stores.
 type onlineRecorder struct {
-	serverID int64
-	protocol string
-	server   node.OnlineUserSubscribe
-	global   node.OnlineUserSubscribe
-	writes   int
+	serverID    int64
+	listenerKey string
+	server      node.OnlineUserSubscribe
+	global      node.OnlineUserSubscribe
+	writes      int
 }
 
 var _ OnlineRecorder = (*onlineRecorder)(nil)
 
-func (r *onlineRecorder) UpdateOnlineUserSubscribe(_ context.Context, serverID int64, protocol string, subscribe node.OnlineUserSubscribe) error {
-	r.serverID, r.protocol, r.server = serverID, protocol, subscribe
+func (r *onlineRecorder) UpdateOnlineUserSubscribe(_ context.Context, serverID int64, listenerKey string, subscribe node.OnlineUserSubscribe) error {
+	r.serverID, r.listenerKey, r.server = serverID, listenerKey, subscribe
 	r.writes++
 	return nil
 }
@@ -34,7 +34,7 @@ func (r *onlineRecorder) UpdateOnlineUserSubscribeGlobal(_ context.Context, subs
 }
 
 func onlineRequest(users ...dto.OnlineUser) *dto.OnlineUsersRequest {
-	return &dto.OnlineUsersRequest{ServerCommon: dto.ServerCommon{ServerId: 4, Protocol: "vless"}, Users: users}
+	return &dto.OnlineUsersRequest{ServerCommon: dto.ServerCommon{ServerId: 4, Protocol: "vless", ListenerKey: "listener-vless"}, Users: users}
 }
 
 // Only the subscriptions the server serves (its user list: 21, not 22 whose
@@ -54,8 +54,8 @@ func TestPushOnlineUsersRecordsOnlyServedSubscriptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PushOnlineUsers: %v", err)
 	}
-	if recorder.serverID != 4 || recorder.protocol != "vless" || recorder.writes != 2 {
-		t.Fatalf("recorded server %d/%s in %d writes", recorder.serverID, recorder.protocol, recorder.writes)
+	if recorder.serverID != 4 || recorder.listenerKey != "listener-vless" || recorder.writes != 2 {
+		t.Fatalf("recorded server %d/%s in %d writes", recorder.serverID, recorder.listenerKey, recorder.writes)
 	}
 	want := node.OnlineUserSubscribe{21: {"1.2.3.4", "5.6.7.8", "2001:db8::1"}}
 	for name, got := range map[string]node.OnlineUserSubscribe{"server": recorder.server, "global": recorder.global} {

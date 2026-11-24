@@ -206,6 +206,8 @@ func serverProtocolToProtobuf(protocol dto.Protocol) (*serverv1.ServerProtocol, 
 		return nil, err
 	}
 	return &serverv1.ServerProtocol{
+		ListenerKey:             protocol.ListenerKey,
+		ListenerName:            protocol.ListenerName,
 		Type:                    protocol.Type,
 		Port:                    uint32(protocol.Port),
 		Version:                 int64(protocol.Version),

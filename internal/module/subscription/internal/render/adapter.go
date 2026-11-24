@@ -104,7 +104,6 @@ func (adapter *Adapter) Proxies(servers []*node.Node) ([]Proxy, error) {
 	var proxies []Proxy
 
 	for _, item := range servers {
-		itemProtocol := canonicalProtocolType(item.Protocol)
 		if item.Server == nil {
 			logger.Errorf("[Adapter] Server is nil for node ID: %d", item.Id)
 			continue
@@ -114,21 +113,26 @@ func (adapter *Adapter) Proxies(servers []*node.Node) ([]Proxy, error) {
 			logger.Errorf("[Adapter] Unmarshal Protocols error: %s; server id : %d", err.Error(), item.ServerId)
 			continue
 		}
-		for _, protocol := range protocols {
-			if protocolType := canonicalProtocolType(protocol.Type); protocolType == itemProtocol {
-				protocol.Type = protocolType
-				if protocolType == "nowhere" {
-					protocol, err = node.NormalizeProtocolForStorage(protocol)
-					if err != nil {
-						return nil, fmt.Errorf("nowhere node %d configuration: %w", item.Id, err)
-					}
-					if !protocol.Enable {
-						continue
-					}
-				}
-				proxies = append(proxies, newProxy(item, protocol))
+		// The node is bound to one listener, so rendering resolves by listener
+		// key. Two listeners of the same protocol type would otherwise both
+		// match and the node would be rendered twice, with whichever settings
+		// came first.
+		protocol, err := node.ResolveListener(protocols, item.ListenerKey, item.Protocol)
+		if err != nil {
+			logger.Errorf("[Adapter] Resolve listener error: %s; node id: %d, server id: %d", err.Error(), item.Id, item.ServerId)
+			continue
+		}
+		protocol.Type = canonicalProtocolType(protocol.Type)
+		if protocol.Type == "nowhere" {
+			protocol, err = node.NormalizeProtocolForStorage(protocol)
+			if err != nil {
+				return nil, fmt.Errorf("nowhere node %d configuration: %w", item.Id, err)
+			}
+			if !protocol.Enable {
+				continue
 			}
 		}
+		proxies = append(proxies, newProxy(item, protocol))
 	}
 
 	return proxies, nil

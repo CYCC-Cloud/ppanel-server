@@ -182,12 +182,11 @@ func proxyFromNode(item *node.Node, userSecret string) (dto.EdgeManifestProxy, b
 	if err != nil {
 		return dto.EdgeManifestProxy{}, false, "node protocol definition is invalid"
 	}
-	for _, protocol := range protocols {
-		if strings.EqualFold(strings.TrimSpace(protocol.Type), strings.TrimSpace(item.Protocol)) {
-			return proxyFromProtocol(item, protocol, userSecret)
-		}
+	listener, err := node.ResolveListener(protocols, item.ListenerKey, item.Protocol)
+	if err != nil {
+		return dto.EdgeManifestProxy{}, false, "matching node listener is missing: " + err.Error()
 	}
-	return dto.EdgeManifestProxy{}, false, "matching node protocol is missing"
+	return proxyFromProtocol(item, listener, userSecret)
 }
 
 func proxyFromProtocol(item *node.Node, protocol node.Protocol, userSecret string) (dto.EdgeManifestProxy, bool, string) {

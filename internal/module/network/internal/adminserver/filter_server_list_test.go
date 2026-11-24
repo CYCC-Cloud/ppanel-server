@@ -15,7 +15,7 @@ import (
 
 type serverPage struct {
 	servers []*node.Server
-	online  map[string]node.OnlineUserSubscribe // by "serverID/protocol"
+	online  map[string]node.OnlineUserSubscribe // by "serverID/listenerKey"
 }
 
 var _ serverListReader = serverPage{}
@@ -28,8 +28,8 @@ func (p serverPage) StatusCache(_ context.Context, serverID int64) (node.Status,
 	return node.Status{Cpu: float64(serverID)}, nil
 }
 
-func (p serverPage) OnlineUserSubscribe(_ context.Context, serverID int64, protocol string) (node.OnlineUserSubscribe, error) {
-	return p.online[fmt.Sprintf("%d/%s", serverID, protocol)], nil
+func (p serverPage) OnlineUserSubscribe(_ context.Context, serverID int64, listenerKey string) (node.OnlineUserSubscribe, error) {
+	return p.online[fmt.Sprintf("%d/%s", serverID, listenerKey)], nil
 }
 
 type subscriptionDetails struct {
@@ -54,8 +54,8 @@ func protocolServer(t *testing.T, id int64, types ...string) *node.Server {
 	t.Helper()
 	server := &node.Server{Id: id, Name: fmt.Sprintf("server-%d", id)}
 	var protocols []node.Protocol
-	for _, typ := range types {
-		protocols = append(protocols, node.Protocol{Type: typ, Port: 443, Enable: true})
+	for index, typ := range types {
+		protocols = append(protocols, node.Protocol{ListenerKey: fmt.Sprintf("%d-%s-%d", id, typ, index), Type: typ, Port: uint16(443 + index), Enable: true})
 	}
 	if err := server.MarshalProtocols(protocols); err != nil {
 		t.Fatal(err)
@@ -63,16 +63,16 @@ func protocolServer(t *testing.T, id int64, types ...string) *node.Server {
 	return server
 }
 
-// The page's online users are resolved with one subscription query, however
-// many users are online on however many servers.
+// Online reports from two listeners of one type stay separate in the cache
+// and are both included in the server's batched subscription read.
 func TestFilterServerListReadsOnlineSubscriptionsInOneQuery(t *testing.T) {
 	expire := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
 	page := serverPage{
-		servers: []*node.Server{protocolServer(t, 1, "vless", "trojan"), protocolServer(t, 2, "vless")},
+		servers: []*node.Server{protocolServer(t, 1, "vless", "vless"), protocolServer(t, 2, "vless")},
 		online: map[string]node.OnlineUserSubscribe{
-			"1/vless":  {11: {"10.0.0.1"}, 12: {"10.0.0.2"}},
-			"1/trojan": {11: {"10.0.0.3"}},
-			"2/vless":  {12: {"10.0.0.4"}, 99: {"10.0.0.9"}},
+			"1/1-vless-0": {11: {"10.0.0.1"}, 12: {"10.0.0.2"}},
+			"1/1-vless-1": {11: {"10.0.0.3"}},
+			"2/2-vless-0": {12: {"10.0.0.4"}, 99: {"10.0.0.9"}},
 		},
 	}
 	details := &subscriptionDetails{rows: map[int64]*usersub.SubscribeDetails{
@@ -104,6 +104,35 @@ func TestFilterServerListReadsOnlineSubscriptionsInOneQuery(t *testing.T) {
 	}
 	if resp.List[1].Status.Cpu != 2 || len(resp.List[0].Protocols) != 2 {
 		t.Fatalf("server fields lost: %+v", resp.List)
+	}
+}
+
+func TestFilterServerListSeparatesSameTypeListenerCaches(t *testing.T) {
+	expire := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
+	server := protocolServer(t, 3, "vless", "vless")
+	page := serverPage{
+		servers: []*node.Server{server},
+		online: map[string]node.OnlineUserSubscribe{
+			"3/3-vless-0": {11: {"10.0.0.1"}},
+			"3/3-vless-1": {11: {"10.0.0.2"}},
+		},
+	}
+	details := &subscriptionDetails{rows: map[int64]*usersub.SubscribeDetails{
+		11: {Id: 11, UserId: 1, ExpireTime: expire},
+	}}
+	resp, err := listServers(context.Background(), page, details, &dto.FilterServerListRequest{Page: 1, Size: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.List) != 1 || len(resp.List[0].Status.Online) != 1 {
+		t.Fatalf("online response = %+v", resp.List)
+	}
+	want := []dto.ServerOnlineIP{
+		{IP: "10.0.0.1", Protocol: "vless"},
+		{IP: "10.0.0.2", Protocol: "vless"},
+	}
+	if got := resp.List[0].Status.Online[0].IP; !reflect.DeepEqual(got, want) {
+		t.Fatalf("online IPs = %+v, want each listener's report: %+v", got, want)
 	}
 }
 

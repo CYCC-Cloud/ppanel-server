@@ -37,7 +37,7 @@ func TestNowhereMorphSurvivesNormalizationAndDistribution(t *testing.T) {
 	}
 }
 func TestStoredNowhereUpgradesWithoutChangingOtherProtocols(t *testing.T) {
-	original := `[{"type":"nowhere","version":1,"port":443,"enable":true,"security":"tls","sni":"nw.example","cert_mode":"self","alpn":["now/1"]},{"type":"tuic","version":5,"alpn":["h3"]}]`
+	original := `[{"listener_key":"listener-nowhere","type":"nowhere","version":1,"port":443,"enable":true,"security":"tls","sni":"nw.example","cert_mode":"self","alpn":["now/1"]},{"listener_key":"listener-tuic","type":"tuic","version":5,"alpn":["h3"]}]`
 	server := &Server{Protocols: original}
 	list, err := server.UnmarshalProtocols()
 	if err != nil {

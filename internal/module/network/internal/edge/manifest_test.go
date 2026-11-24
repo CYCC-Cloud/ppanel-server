@@ -92,6 +92,32 @@ func TestProxyFromProtocol(t *testing.T) {
 	}
 }
 
+func TestProxyFromNodeUsesBoundListener(t *testing.T) {
+	server := &node.Server{Id: 1, Name: "server", Address: "example.com"}
+	if err := server.MarshalProtocols([]node.Protocol{
+		{ListenerKey: "listener-a", Type: "trojan", Port: 443, Enable: false},
+		{ListenerKey: "listener-b", Type: "trojan", Port: 8443, Enable: true},
+	}); err != nil {
+		t.Fatalf("marshal protocols: %v", err)
+	}
+	item := &node.Node{
+		Name:        "bound listener",
+		Address:     "edge.example.com",
+		Port:        8443,
+		Protocol:    "trojan",
+		ListenerKey: "listener-b",
+		Server:      server,
+	}
+
+	proxy, supported, reason := proxyFromNode(item, "user-secret")
+	if !supported || reason != "" {
+		t.Fatalf("proxyFromNode() supported = %v, reason = %q", supported, reason)
+	}
+	if proxy.Port != 8443 || proxy.Protocol != "trojan" {
+		t.Fatalf("proxy = %#v, want listener-b", proxy)
+	}
+}
+
 func TestProxyFromProtocolRejectsUnsupportedWorkerFeatures(t *testing.T) {
 	item := &node.Node{Name: "Reality", Address: "example.com", Port: 443}
 	_, supported, reason := proxyFromProtocol(item, node.Protocol{Type: "vless", Enable: true, Security: "reality"}, "user-secret")
@@ -168,14 +194,14 @@ func TestManifestListsProxiesOnlyForServableSubscriptions(t *testing.T) {
 	enabled := true
 	server := &node.Server{}
 	if err := server.MarshalProtocols([]node.Protocol{
-		{Type: "vless", Enable: true, Security: "tls", SNI: "jp.example.com"},
-		{Type: "trojan", Enable: true, Security: "reality"},
+		{ListenerKey: "listener-vless", Type: "vless", Port: 443, Enable: true, Security: "tls", SNI: "jp.example.com"},
+		{ListenerKey: "listener-trojan", Type: "trojan", Port: 8443, Enable: true, Security: "reality"},
 	}); err != nil {
 		t.Fatal(err)
 	}
 	nodes := &edgeManifestNodes{nodes: []*node.Node{
-		{Id: 1, Name: "Tokyo", Address: "jp.example.com", Port: 443, Protocol: "vless", Server: server},
-		{Id: 2, Name: "Osaka", Address: "osaka.example.com", Port: 443, Protocol: "trojan", Server: server},
+		{Id: 1, Name: "Tokyo", Address: "jp.example.com", Port: 443, Protocol: "vless", ListenerKey: "listener-vless", Server: server},
+		{Id: 2, Name: "Osaka", Address: "osaka.example.com", Port: 443, Protocol: "trojan", ListenerKey: "listener-trojan", Server: server},
 	}}
 	future := time.Now().Add(24 * time.Hour)
 	manifest := func(sub usersub.Subscribe) manifestResult {

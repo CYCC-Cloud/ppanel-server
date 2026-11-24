@@ -13,11 +13,13 @@ import (
 
 // serverOnlyFields are the protocol settings a client never receives: the
 // node's own listening port (clients use the node entry's), the switch, the
+// listener identity (a panel-internal selector, not a proxy setting), the
 // plugin in its server form, the server secrets, the REALITY handshake
 // target (clients connect to the node and send the SNI) and the DNS provider
 // with the credentials the node's ACME client uses.
 var serverOnlyFields = map[string]bool{
-	"Port": true, "Enable": true, "Plugin": true, "PluginOptions": true,
+	"Port": true, "Enable": true, "ListenerKey": true, "ListenerName": true,
+	"Plugin": true, "PluginOptions": true,
 	"RealityPrivateKey": true, "EncryptionTicket": true, "EncryptionServerPadding": true, "EncryptionPrivateKey": true,
 	"RealityServerAddr": true, "RealityServerPort": true, "CertDNSProvider": true, "CertDNSEnv": true,
 }
