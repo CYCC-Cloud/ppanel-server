@@ -10,6 +10,7 @@ import (
 	"github.com/perfect-panel/backend/internal/config"
 	dto "github.com/perfect-panel/backend/internal/module/network/contract"
 	"github.com/perfect-panel/backend/internal/module/network/internal/adminserver"
+	"github.com/perfect-panel/backend/internal/module/network/internal/configevent"
 	"github.com/perfect-panel/backend/internal/module/network/internal/edge"
 	"github.com/perfect-panel/backend/internal/module/network/internal/listeneridentity"
 	"github.com/perfect-panel/backend/internal/module/network/internal/repo"
@@ -143,6 +144,7 @@ func New(deps Deps) Service {
 				return adminserver.Snapshot{Node: deps.Config().Node}
 			},
 			Subscriptions: deps.Subscription,
+			ConfigEvents:  configevent.NewRedisPublisher(deps.Redis),
 		}),
 		api: serverapi.NewService(serverapi.Deps{
 			Reports:      deps.Store.Inbox(),

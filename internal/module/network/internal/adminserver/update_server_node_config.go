@@ -37,5 +37,9 @@ func (s *Service) UpdateServerNodeConfig(ctx context.Context, req *dto.UpdateSer
 		return xerr.Wrapf(err, xerr.DatabaseUpdateError, "update server node config error: %v", err)
 	}
 
-	return nodeStore.ClearServerCache(ctx, req.ServerID)
+	if err := nodeStore.ClearServerCache(ctx, req.ServerID); err != nil {
+		return err
+	}
+	s.deps.ConfigEvents.ConfigChanged(ctx, req.ServerID, nil)
+	return nil
 }
