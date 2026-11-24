@@ -7,6 +7,7 @@ package adminserver
 
 import (
 	"github.com/perfect-panel/backend/internal/config"
+	"github.com/perfect-panel/backend/internal/module/network/internal/configevent"
 	"github.com/perfect-panel/backend/internal/repository"
 )
 
@@ -24,6 +25,10 @@ type Deps struct {
 	Subscriptions OnlineSubscriptionReader
 	// Config snapshots the runtime-mutable node settings per request.
 	Config func() Snapshot
+	// ConfigEvents announces committed configuration changes to the node
+	// control plane. It is always set by the facade; the nop publisher keeps
+	// call sites free of nil checks.
+	ConfigEvents configevent.Publisher
 }
 
 // Service is the admin server-management entry point used by the network
@@ -34,6 +39,9 @@ type Service struct {
 
 // NewService returns the subdomain's service over deps.
 func NewService(deps Deps) *Service {
+	if deps.ConfigEvents == nil {
+		deps.ConfigEvents = configevent.NopPublisher{}
+	}
 	return &Service{deps: deps}
 }
 

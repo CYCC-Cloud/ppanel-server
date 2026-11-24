@@ -85,5 +85,17 @@ func (s *Service) UpdateServer(ctx context.Context, req *dto.UpdateServerRequest
 		return xerr.Wrapf(err, xerr.DatabaseUpdateError, "update server error: %v", err.Error())
 	}
 
-	return nodeStore.ClearServerCache(ctx, req.Id)
+	if err := nodeStore.ClearServerCache(ctx, req.Id); err != nil {
+		return err
+	}
+	s.deps.ConfigEvents.ConfigChanged(ctx, req.Id, changedProtocolTypes(protocols))
+	return nil
+}
+
+func changedProtocolTypes(protocols []node.Protocol) []string {
+	types := make([]string, 0, len(protocols))
+	for _, protocol := range protocols {
+		types = append(types, protocol.Type)
+	}
+	return types
 }
