@@ -2,6 +2,7 @@ package serverapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/perfect-panel/backend/pkg/timeutil"
@@ -30,10 +31,14 @@ func (s *Service) ServerPushUserTraffic(ctx context.Context, req *dto.ServerPush
 	}
 	// Upstream prices a report by the first protocol of its type. Scoping the
 	// server to the resolved listener keeps each same-type listener's ratio.
-	priced := *serverInfo
-	if err := priced.MarshalProtocols([]node.Protocol{listener}); err != nil {
+	// This is an in-memory view, not a write: a listener that predates
+	// listener identity has no key yet and must still be priced.
+	scoped, err := json.Marshal([]node.Protocol{listener})
+	if err != nil {
 		return fmt.Errorf("scope listener %s: %w", listener.ListenerKey, err)
 	}
+	priced := *serverInfo
+	priced.Protocols = string(scoped)
 
 	aggregator := trafficagg.New(trafficagg.Deps{
 		Usage:         s.deps.TrafficUsage,
