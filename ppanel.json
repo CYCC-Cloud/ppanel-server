@@ -16823,7 +16823,16 @@
                 "ip": {
                     "type": "string"
                 },
+                "listener_key": {
+                    "description": "ListenerKey identifies which listener reported this address, so two\nlisteners of the same type are never conflated.",
+                    "type": "string"
+                },
+                "listener_name": {
+                    "description": "ListenerName is the listener's optional administrator-facing label.",
+                    "type": "string"
+                },
                 "protocol": {
+                    "description": "Protocol is the resolved listener's type. It stays for compatibility and\ncannot identify a listener on its own once a server runs several\nlisteners of one type.",
                     "type": "string"
                 }
             }
