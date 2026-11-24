@@ -126,7 +126,10 @@ func onlineIPs(ctx context.Context, servers serverListReader, serverID int64, pr
 		}
 		for subscriptionID, ips := range data {
 			for _, ip := range ips {
-				online[subscriptionID] = append(online[subscriptionID], dto.ServerOnlineIP{IP: ip, Protocol: protocol.Type})
+				online[subscriptionID] = append(online[subscriptionID], dto.ServerOnlineIP{
+					IP: ip, Protocol: protocol.Type,
+					ListenerKey: protocol.ListenerKey, ListenerName: protocol.ListenerName,
+				})
 			}
 		}
 	}

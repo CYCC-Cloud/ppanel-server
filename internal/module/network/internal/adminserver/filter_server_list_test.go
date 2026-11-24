@@ -128,8 +128,8 @@ func TestFilterServerListSeparatesSameTypeListenerCaches(t *testing.T) {
 		t.Fatalf("online response = %+v", resp.List)
 	}
 	want := []dto.ServerOnlineIP{
-		{IP: "10.0.0.1", Protocol: "vless"},
-		{IP: "10.0.0.2", Protocol: "vless"},
+		{IP: "10.0.0.1", Protocol: "vless", ListenerKey: "3-vless-0"},
+		{IP: "10.0.0.2", Protocol: "vless", ListenerKey: "3-vless-1"},
 	}
 	if got := resp.List[0].Status.Online[0].IP; !reflect.DeepEqual(got, want) {
 		t.Fatalf("online IPs = %+v, want each listener's report: %+v", got, want)
