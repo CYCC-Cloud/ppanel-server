@@ -24,14 +24,12 @@ const (
 	droppedOnlineSIDLogLimit = 20
 )
 
-// PushOnlineUsers records the users a server reports online over a protocol,
-// with their IPs, for the server and in the global online count. Only the
-// subscriptions the server serves over the protocol, the users its user list
-// hands it, are recorded; an entry for any other subscription is dropped and
-// logged, as the traffic report does. A report over the entry bound, or with
-// an address that is not an IP, is refused.
+// PushOnlineUsers records a server listener's online users under its stable
+// listener key. Only subscriptions served over the listener's protocol type
+// are recorded; a report over the entry bound, or with an invalid IP, is
+// refused.
 func (s *Service) PushOnlineUsers(ctx context.Context, req *dto.OnlineUsersRequest) error {
-	// A report names its server and at least one user, each with a
+	// A report names its server and at least one user, each with an
 	// subscription id and an IP.
 	if req.ServerId <= 0 || len(req.Users) == 0 {
 		return errors.New("invalid request parameters")
@@ -52,7 +50,15 @@ func (s *Service) PushOnlineUsers(ctx context.Context, req *dto.OnlineUsersReque
 	}
 
 	log := logger.WithContext(ctx)
-	served, err := s.servedSubscriptionIDs(ctx, req.ServerId, req.Protocol)
+	server, listener, err := s.resolveServerListener(ctx, req.ServerId, req.ServerCommon)
+	if err != nil {
+		log.Errorw("[PushOnlineUsers] resolve listener error", logger.Field("listener_key", req.ListenerKey), logger.Field("protocol", req.Protocol), logger.Field("error", err.Error()))
+		return fmt.Errorf("resolve listener: %w", err)
+	}
+	if !listener.Enable {
+		return fmt.Errorf("listener %s is disabled", listener.ListenerKey)
+	}
+	served, err := s.servedSubscriptionIDs(ctx, server.Id, listener.Type)
 	if err != nil {
 		log.Errorw("[PushOnlineUsers] resolve the served subscriptions failed", logger.Field("error", err.Error()))
 		return fmt.Errorf("resolve served subscriptions: %w", err)
@@ -80,12 +86,13 @@ func (s *Service) PushOnlineUsers(ctx context.Context, req *dto.OnlineUsersReque
 		// misbehaving node.
 		log.Infow("[PushOnlineUsers] Dropped online users the server does not serve",
 			logger.Field("server_id", req.ServerId),
-			logger.Field("protocol", req.Protocol),
+			logger.Field("protocol", listener.Type),
+			logger.Field("listener_key", listener.ListenerKey),
 			logger.Field("count", unserved),
 			logger.Field("sids", unservedSIDs),
 		)
 	}
-	if err := s.deps.Online.UpdateOnlineUserSubscribe(ctx, req.ServerId, req.Protocol, onlineUsers); err != nil {
+	if err := s.deps.Online.UpdateOnlineUserSubscribe(ctx, req.ServerId, listener.ListenerKey, onlineUsers); err != nil {
 		log.Errorw("[PushOnlineUsers] cache operation error", logger.Field("error", err))
 		return err
 	}

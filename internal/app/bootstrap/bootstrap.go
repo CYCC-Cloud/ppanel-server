@@ -36,8 +36,11 @@ type Dependencies struct {
 	// Settings is the platform kernel's system-settings table the loaders
 	// read, and SettingsTx runs the node-secret provisioning in one platform
 	// transaction; the composition root adapts the shared store to both.
-	Settings                 Settings
-	SettingsTx               SettingsTransactor
+	Settings   Settings
+	SettingsTx SettingsTransactor
+	// Network upgrades stored listener identities after migration and before
+	// the node API loads or serves traffic.
+	Network                  network.Service
 	ExchangeRate             *billing.CurrencyRateCache
 	Notification             TelegramNotifications
 	SetTelegramBot           func(*tgbot.Bot)
@@ -169,6 +172,11 @@ var startupOrder = []Subsystem{
 func Start(ctx context.Context, deps *Dependencies) error {
 	if err := Migrate(ctx, deps); err != nil {
 		return err
+	}
+	if deps != nil && deps.Network != nil {
+		if err := deps.Network.UpgradeListenerIdentity(ctx); err != nil {
+			return wrapf(err, xerr.ERROR, "upgrade listener identities")
+		}
 	}
 	WarnDefaultAdminPassword(ctx, deps)
 	return loadSubsystems(ctx, deps, startupOrder)

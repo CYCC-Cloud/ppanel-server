@@ -114,7 +114,7 @@ func (f *ltsFixture) startTerraris(bin string, dropAck func(*http.Request, []byt
 	}
 	address := free.Addr().(*net.TCPAddr)
 	_ = free.Close()
-	if err := f.server.MarshalProtocols([]node.Protocol{{Type: "vless", Enable: true, Port: uint16(address.Port), Network: "tcp", Transport: "tcp", Security: "none", Encryption: "none", Ratio: 1}}); err != nil {
+	if err := f.server.MarshalProtocols([]node.Protocol{{ListenerKey: "lts-vless", Type: "vless", Enable: true, Port: uint16(address.Port), Network: "tcp", Transport: "tcp", Security: "none", Encryption: "none", Ratio: 1}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.DB.Model(f.server).UpdateColumn("protocols", f.server.Protocols).Error; err != nil {

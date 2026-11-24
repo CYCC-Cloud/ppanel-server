@@ -25,7 +25,7 @@ type refreshScopeStore struct {
 }
 
 func (s *refreshScopeStore) FindOneServer(_ context.Context, id int64) (*node.Server, error) {
-	return &node.Server{Id: id}, nil
+	return &node.Server{Id: id, Protocols: `[{"listener_key":"listener-vless","type":"vless","enable":true}]`}, nil
 }
 
 func (s *refreshScopeStore) ListNodes(ctx context.Context, params *node.FilterNodeParams) ([]*node.Node, error) {
@@ -128,7 +128,7 @@ func invalidateRefreshScopes(t *testing.T, svc *Service, scopes int64) {
 	for id := int64(1); id <= scopes; id++ {
 		pipe := svc.deps.Redis.TxPipeline()
 		pipe.Incr(t.Context(), fmt.Sprintf(node.ServerCacheGenerationKey, id))
-		pipe.Del(t.Context(), serverUserListCacheKey(id, "vless"))
+		pipe.Del(t.Context(), serverProtocolUserListCacheKey(id, "vless"))
 		if _, err := pipe.Exec(t.Context()); err != nil {
 			t.Fatal(err)
 		}

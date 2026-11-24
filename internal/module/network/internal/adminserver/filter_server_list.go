@@ -14,11 +14,11 @@ import (
 )
 
 // serverListReader is what the server list reads of the network data: the
-// servers of a page and their reported status and online users.
+// servers of a page and their reported status and listener-scoped online users.
 type serverListReader interface {
 	FilterServerList(ctx context.Context, params *node.FilterParams) (int64, []*node.Server, error)
 	StatusCache(ctx context.Context, serverId int64) (node.Status, error)
-	OnlineUserSubscribe(ctx context.Context, serverId int64, protocol string) (node.OnlineUserSubscribe, error)
+	OnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string) (node.OnlineUserSubscribe, error)
 }
 
 // OnlineSubscriptionReader reads the subscriptions behind the online users,
@@ -113,14 +113,15 @@ func serverDTO(datum *node.Server) dto.Server {
 	return server
 }
 
-// onlineIPs gathers the IPs the server's protocols report online, merged by
-// subscription.
+// onlineIPs gathers the IPs every server listener reports online, merged by
+// subscription. The cache is listener-scoped so equal protocol types do not
+// overwrite one another.
 func onlineIPs(ctx context.Context, servers serverListReader, serverID int64, protocols []dto.Protocol) map[int64][]dto.ServerOnlineIP {
 	online := make(map[int64][]dto.ServerOnlineIP)
 	for _, protocol := range protocols {
-		data, err := servers.OnlineUserSubscribe(ctx, serverID, protocol.Type)
+		data, err := servers.OnlineUserSubscribe(ctx, serverID, protocol.ListenerKey)
 		if err != nil {
-			logger.WithContext(ctx).Errorw("[FilterServerList] Read online users failed", logger.Field("error", err.Error()), logger.Field("server_id", serverID), logger.Field("protocol", protocol.Type))
+			logger.WithContext(ctx).Errorw("[FilterServerList] Read online users failed", logger.Field("error", err.Error()), logger.Field("server_id", serverID), logger.Field("listener_key", protocol.ListenerKey))
 			continue
 		}
 		for subscriptionID, ips := range data {

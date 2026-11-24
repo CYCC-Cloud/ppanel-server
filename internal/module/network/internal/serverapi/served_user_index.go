@@ -83,7 +83,7 @@ func (c *servedIndexCache) remove(e *list.Element) {
 }
 
 func (s *Service) servedUserIndex(ctx context.Context, serverID int64, protocol string) (*servedUserIndex, error) {
-	key := serverUserListCacheKey(serverID, protocol)
+	key := serverProtocolUserListCacheKey(serverID, protocol)
 	for range 3 {
 		generation, err := s.deps.Caches.ServerCacheGeneration(ctx, serverID)
 		if err != nil {
@@ -117,7 +117,7 @@ func (s *Service) servedUserIndex(ctx context.Context, serverID int64, protocol 
 }
 
 func (s *Service) loadServedUserIndex(ctx context.Context, serverID int64, protocol string) (*servedUserIndex, error) {
-	key := serverUserListCacheKey(serverID, protocol)
+	key := serverProtocolUserListCacheKey(serverID, protocol)
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), userListLoadTimeout)
 	defer cancel()
 	if err := s.indexBuilds.acquire(ctx); err != nil {
@@ -132,12 +132,12 @@ func (s *Service) loadServedUserIndex(ctx context.Context, serverID int64, proto
 		if index := s.userIndexes.get(key, generation, time.Now()); index != nil {
 			return index, nil
 		}
-		data, err := s.readCachedUserList(ctx, serverID, protocol, generation)
+		data, err := s.readCachedUserList(ctx, key, generation)
 		if err != nil {
 			return nil, err
 		}
 		if data == nil {
-			data, err = s.rebuildUserList(ctx, serverID, protocol)
+			data, err = s.rebuildProtocolUserList(ctx, serverID, protocol)
 			if err != nil {
 				return nil, err
 			}

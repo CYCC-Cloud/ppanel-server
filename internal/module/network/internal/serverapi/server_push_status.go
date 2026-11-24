@@ -42,7 +42,23 @@ func (s *Service) ServerPushStatus(ctx context.Context, req *dto.ServerPushStatu
 	certPinChanged := false
 	currentProtocols := serverInfo.Protocols
 	if req.CertPinSHA256 != "" {
-		certPinChanged, err = serverInfo.ApplyReportedCertPin(req.Protocol, req.CertPinSHA256)
+		protocols, unmarshalErr := serverInfo.UnmarshalProtocols()
+		if unmarshalErr != nil {
+			log.Errorw("[ServerPushStatus] UnmarshalProtocols error", logger.Field("error", unmarshalErr))
+			return nil
+		}
+		// The fingerprint belongs to the reporting listener alone; resolving
+		// by protocol type would stamp it onto a sibling listener too.
+		listener, resolveErr := resolveRequestListener(protocols, req.ServerCommon)
+		if resolveErr != nil {
+			log.Errorw("[ServerPushStatus] resolve listener error",
+				logger.Field("listener_key", req.ListenerKey),
+				logger.Field("protocol", req.Protocol),
+				logger.Field("error", resolveErr.Error()),
+			)
+			return nil
+		}
+		certPinChanged, err = serverInfo.ApplyReportedCertPin(listener.ListenerKey, req.CertPinSHA256)
 		if err != nil {
 			log.Errorw("[ServerPushStatus] ApplyReportedCertPin error", logger.Field("error", err))
 			certPinChanged = false

@@ -35,7 +35,7 @@ func (h *listReadCounter) ProcessPipelineHook(next redis.ProcessPipelineHook) re
 	}
 }
 func (h *listReadCounter) count(cmd redis.Cmder) {
-	if cmd.Name() == "get" && fmt.Sprint(cmd.Args()[1]) == serverUserListCacheKey(4, "vless") {
+	if cmd.Name() == "get" && fmt.Sprint(cmd.Args()[1]) == serverProtocolUserListCacheKey(4, "vless") {
 		h.reads.Add(1)
 	}
 }
@@ -46,7 +46,7 @@ func cacheIndexUsers(t testing.TB, client *redis.Client, serverID int64, protoco
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := client.Set(t.Context(), serverUserListCacheKey(serverID, protocol), payload, ttl).Err(); err != nil {
+	if err := client.Set(t.Context(), serverProtocolUserListCacheKey(serverID, protocol), payload, ttl).Err(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -257,8 +257,10 @@ func TestUserListRebuildSharedAcrossEndpointsAndSurvivesCanceledWaiter(t *testin
 	}
 	close(lister.release)
 	group.Wait()
-	if store.lookups != 1 {
-		t.Fatalf("database rebuilds = %d, want 1", store.lookups)
+	// The node's list and the report allowlist are distinct scopes now: the
+	// listener-scoped list and the type-wide index fill once each.
+	if store.lookups != 2 {
+		t.Fatalf("database rebuilds = %d, want one per scope", store.lookups)
 	}
 }
 
@@ -275,7 +277,7 @@ func TestServedIndexExpiresWithSourceList(t *testing.T) {
 	}
 	// miniredis advances independently of wall time. Remove the source and
 	// wait for the local deadline, then ensure a time-based expiry refreshes it.
-	if err := client.Del(t.Context(), serverUserListCacheKey(4, "vless")).Err(); err != nil {
+	if err := client.Del(t.Context(), serverProtocolUserListCacheKey(4, "vless")).Err(); err != nil {
 		t.Fatal(err)
 	}
 	<-time.After(time.Until(index.expiresAt) + time.Millisecond)
@@ -458,13 +460,18 @@ func TestDeviceIndexValidatesServerOnceAndRejectsDeletion(t *testing.T) {
 			if _, err := svc.GetServerAliveList(t.Context(), &dto.GetServerUserListRequest{ServerCommon: dto.ServerCommon{ServerId: 4, Protocol: "vless"}}); err != nil {
 				t.Fatal(err)
 			}
+			if got := lookups.Load(); got != 1 {
+				t.Fatalf("server queries = %d, want 1 per fill", got)
+			}
 			deps.Online = &onlineRecorder{}
 			svc.deps.Online = deps.Online
 			if err := svc.PushOnlineUsers(t.Context(), onlineRequest(dto.OnlineUser{SID: 21, IP: "10.0.0.1"})); err != nil {
 				t.Fatal(err)
 			}
-			if got := lookups.Load(); got != 1 {
-				t.Fatalf("server queries = %d, want 1 per fill", got)
+			// The report resolves its listener from the server row once; the
+			// served scope itself is still read from the shared index.
+			if got := lookups.Load(); got != 2 {
+				t.Fatalf("server queries = %d after an online report, want the fill plus its listener resolution", got)
 			}
 			// Leave stale Redis list data present: existence cannot be inferred
 			// solely from a cached user list after deletion invalidates the index.
@@ -514,7 +521,7 @@ func BenchmarkServedUserLookup(b *testing.B) {
 func benchmarkPreviousLookup(b *testing.B, client *redis.Client, sid int64) {
 	b.ReportAllocs()
 	for b.Loop() {
-		cached, err := client.Get(b.Context(), serverUserListCacheKey(4, "vless")).Result()
+		cached, err := client.Get(b.Context(), serverProtocolUserListCacheKey(4, "vless")).Result()
 		if err != nil {
 			b.Fatal(err)
 		}

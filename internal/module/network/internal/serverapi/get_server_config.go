@@ -20,7 +20,13 @@ import (
 func (s *Service) GetServerConfig(ctx context.Context, req *dto.GetServerConfigRequest, meta RequestMeta) (*dto.GetServerConfigResponse, ResponseMeta, error) {
 	log := logger.WithContext(ctx)
 	response := NewResponseMeta()
-	cacheKey := fmt.Sprintf("%s%d:%s", node.ServerConfigCacheKey, req.ServerId, req.Protocol)
+	// The listener is the cache scope; a request that predates listener keys
+	// is scoped by its protocol, which only resolves to one listener.
+	requestScope := req.ListenerKey
+	if requestScope == "" {
+		requestScope = req.Protocol
+	}
+	cacheKey := fmt.Sprintf("%s%d:%s", node.ServerConfigCacheKey, req.ServerId, requestScope)
 	if cache, err := s.deps.Redis.Get(ctx, cacheKey).Result(); err == nil && cache != "" {
 		etag := httpx.GenerateETag([]byte(cache))
 		if meta.IfNoneMatch == etag {
@@ -38,37 +44,17 @@ func (s *Service) GetServerConfig(ctx context.Context, req *dto.GetServerConfigR
 	if err != nil {
 		return nil, response, err
 	}
-	data, err := s.deps.Servers.FindOneServer(ctx, req.ServerId)
+	_, listener, err := s.resolveServerListener(ctx, req.ServerId, req.ServerCommon)
 	if err != nil {
-		log.Errorw("[GetServerConfig] FindOne error", logger.Field("error", err.Error()))
-		return nil, response, err
+		return nil, response, fmt.Errorf("resolve listener (listener_key=%q, protocol=%q): %w", req.ListenerKey, req.Protocol, err)
 	}
-
-	// Older nodes still ask for hysteria by its former name, hysteria2.
-	protocolRequest := req.Protocol
-	if protocolRequest == Hysteria2 {
-		protocolRequest = Hysteria
-	}
-
-	protocols, err := data.UnmarshalProtocols()
-	if err != nil {
-		return nil, response, err
-	}
-	var cfg map[string]any
-	matched := false
-	for _, protocol := range protocols {
-		if protocol.Enable && protocol.Type == protocolRequest {
-			matched = true
-			cfg = compatible(protocol)
-			break
-		}
-	}
-
-	if cfg == nil {
-		if matched {
-			return nil, response, fmt.Errorf("protocol %s is not supported by the legacy server config endpoint; use /v2/server/{server_id}", req.Protocol)
-		}
+	if !listener.Enable {
 		return nil, response, fmt.Errorf("protocol %s not found or disabled", req.Protocol)
+	}
+
+	cfg := compatible(listener)
+	if cfg == nil {
+		return nil, response, fmt.Errorf("protocol %s is not supported by the legacy server config endpoint; use /v2/server/{server_id}", req.Protocol)
 	}
 
 	settings := s.deps.Config().Node

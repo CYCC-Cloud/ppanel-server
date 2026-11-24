@@ -164,11 +164,13 @@ func TestResponseConversions(t *testing.T) {
 		}},
 		Protocols: []dto.Protocol{
 			{
+				ListenerKey: "listener-vless", ListenerName: "Primary VLESS",
 				Type: "vless", Port: 443, Enable: true, Transport: "xhttp", XhttpMode: "auto",
 				PluginOptions: map[string]string{"host": "example.com"},
 			},
 			{
-				Type: "nowhere", Port: 8443, Version: 3, Enable: true, Security: "tls", Network: "mix", Obfs: "none",
+				ListenerKey: "listener-nowhere",
+				Type:        "nowhere", Port: 8443, Version: 3, Enable: true, Security: "tls", Network: "mix", Obfs: "none",
 				SNI: "nowhere.example", ALPN: []string{"nw3"}, CertMode: "self",
 			},
 		},
@@ -186,8 +188,12 @@ func TestResponseConversions(t *testing.T) {
 	if len(protocols.Data.Outbound) != 1 || protocols.Data.Outbound[0].PluginOptions.GetStringValue() != "mode=fast" {
 		t.Fatalf("outbound = %+v, want strongly typed outbound configuration", protocols.Data.Outbound)
 	}
-	if len(protocols.Data.Protocols) != 2 || protocols.Data.Protocols[0].XhttpMode != "auto" || protocols.Data.Protocols[0].PluginOptions.GetStructValue().Fields["host"].GetStringValue() != "example.com" {
-		t.Fatalf("protocols = %+v, want strongly typed protocol configuration", protocols.Data.Protocols)
+	if len(protocols.Data.Protocols) != 2 ||
+		protocols.Data.Protocols[0].ListenerKey != "listener-vless" ||
+		protocols.Data.Protocols[0].ListenerName != "Primary VLESS" ||
+		protocols.Data.Protocols[0].XhttpMode != "auto" ||
+		protocols.Data.Protocols[0].PluginOptions.GetStructValue().Fields["host"].GetStringValue() != "example.com" {
+		t.Fatalf("protocols = %+v, want listener identity and strongly typed protocol configuration", protocols.Data.Protocols)
 	}
 	nowhere := protocols.Data.Protocols[1]
 	if nowhere.Type != "nowhere" || nowhere.Port != 8443 || nowhere.Version != 3 ||

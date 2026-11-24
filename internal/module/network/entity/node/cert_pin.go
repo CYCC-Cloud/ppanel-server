@@ -19,23 +19,25 @@ func NormalizeCertPinSHA256(raw string) string {
 }
 
 // ApplyReportedCertPin records the certificate fingerprint a node reported for
-// its protocol type. Only self-signed entries (cert_mode=self) accept the
-// report; the node computes the fingerprint solely for certificates it
-// generated itself, so a pin against any other cert_mode is stale by
-// definition. It returns true when the stored protocols changed.
-func (m *Server) ApplyReportedCertPin(protocolType, fingerprint string) (bool, error) {
+// one of its server's listeners. Only self-signed entries (cert_mode=self)
+// accept the report; the node computes the fingerprint solely for certificates
+// it generated itself, so a pin against any other cert_mode is stale by
+// definition. The listener key identifies exactly one listener, so a server
+// running several listeners of the same protocol type never has a sibling's
+// fingerprint written over its own. It returns true when the stored protocols
+// changed.
+func (m *Server) ApplyReportedCertPin(listenerKey, fingerprint string) (bool, error) {
 	pin := NormalizeCertPinSHA256(fingerprint)
-	if pin == "" {
+	if pin == "" || listenerKey == "" {
 		return false, nil
 	}
 	protocols, err := m.UnmarshalProtocols()
 	if err != nil {
 		return false, err
 	}
-	target := normalizeProtocolType(protocolType)
 	changed := false
 	for i := range protocols {
-		if normalizeProtocolType(protocols[i].Type) != target {
+		if protocols[i].ListenerKey != listenerKey {
 			continue
 		}
 		if normalizeNone(protocols[i].CertMode) != "self" || protocols[i].CertPinSHA256 == pin {

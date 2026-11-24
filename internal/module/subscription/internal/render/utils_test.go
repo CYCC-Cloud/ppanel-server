@@ -38,6 +38,7 @@ func TestAdapterProxyMatchesCanonicalProtocolAliases(t *testing.T) {
 	}
 	if err := srv.MarshalProtocols([]node.Protocol{
 		{
+			ListenerKey: "listener-ssr",
 			Type:        "shadowsocksr",
 			Port:        8389,
 			Enable:      true,
@@ -48,10 +49,11 @@ func TestAdapterProxyMatchesCanonicalProtocolAliases(t *testing.T) {
 			ObfsParam:   "example.com",
 		},
 		{
-			Type:   "hysteria",
-			Port:   443,
-			Enable: true,
-			SNI:    "tls.example.com",
+			ListenerKey: "listener-hysteria",
+			Type:        "hysteria",
+			Port:        443,
+			Enable:      true,
+			SNI:         "tls.example.com",
 		},
 	}); err != nil {
 		t.Fatalf("marshal protocols: %v", err)
@@ -60,24 +62,26 @@ func TestAdapterProxyMatchesCanonicalProtocolAliases(t *testing.T) {
 	enabled := true
 	proxies, err := NewAdapter(tpl).Proxies([]*node.Node{
 		{
-			Id:       1,
-			Name:     "SSR Alias",
-			Port:     8389,
-			Address:  "ssr.example.com",
-			ServerId: srv.Id,
-			Server:   srv,
-			Protocol: "ssr",
-			Enabled:  &enabled,
+			Id:          1,
+			Name:        "SSR Alias",
+			Port:        8389,
+			Address:     "ssr.example.com",
+			ServerId:    srv.Id,
+			Server:      srv,
+			ListenerKey: "listener-ssr",
+			Protocol:    "ssr",
+			Enabled:     &enabled,
 		},
 		{
-			Id:       2,
-			Name:     "Hysteria Alias",
-			Port:     443,
-			Address:  "hy.example.com",
-			ServerId: srv.Id,
-			Server:   srv,
-			Protocol: "hysteria2",
-			Enabled:  &enabled,
+			Id:          2,
+			Name:        "Hysteria Alias",
+			Port:        443,
+			Address:     "hy.example.com",
+			ServerId:    srv.Id,
+			Server:      srv,
+			ListenerKey: "listener-hysteria",
+			Protocol:    "hysteria2",
+			Enabled:     &enabled,
 		},
 	})
 	if err != nil {
@@ -94,6 +98,34 @@ func TestAdapterProxyMatchesCanonicalProtocolAliases(t *testing.T) {
 	}
 }
 
+// A server may run two listeners of one protocol type with different
+// settings. Each node renders the listener it is bound to, and never its
+// sibling.
+func TestAdapterProxyRendersBoundListenerOnly(t *testing.T) {
+	srv := &node.Server{Id: 1, Name: "MultiListener", Address: "example.com"}
+	if err := srv.MarshalProtocols([]node.Protocol{
+		{ListenerKey: "listener-a", Type: "trojan", Port: 443, Enable: true, Security: "tls", SNI: "a.example.com", Transport: "tcp"},
+		{ListenerKey: "listener-b", Type: "trojan", Port: 8443, Enable: true, Security: "tls", SNI: "b.example.com", Transport: "ws", Path: "/b"},
+	}); err != nil {
+		t.Fatalf("marshal protocols: %v", err)
+	}
+
+	enabled := true
+	proxies, err := NewAdapter(tpl).Proxies([]*node.Node{{
+		Id: 1, Name: "Bound to B", Port: 8443, Address: "b.example.com", ServerId: srv.Id,
+		Server: srv, ListenerKey: "listener-b", Protocol: "trojan", Enabled: &enabled,
+	}})
+	if err != nil {
+		t.Fatalf("failed to adapt servers: %v", err)
+	}
+	if len(proxies) != 1 {
+		t.Fatalf("proxies len = %d, want 1", len(proxies))
+	}
+	if proxies[0].SNI != "b.example.com" || proxies[0].Transport != "ws" || proxies[0].Path != "/b" {
+		t.Fatalf("proxy = %#v, want the settings of listener-b", proxies[0])
+	}
+}
+
 func getServers() []*node.Node {
 	srv := &node.Server{
 		Id:      1,
@@ -102,18 +134,20 @@ func getServers() []*node.Node {
 	}
 	if err := srv.MarshalProtocols([]node.Protocol{
 		{
-			Type:   "shadowsocks",
-			Port:   1234,
-			Enable: true,
-			Cipher: "aes-256-gcm",
+			ListenerKey: "listener-ss",
+			Type:        "shadowsocks",
+			Port:        1234,
+			Enable:      true,
+			Cipher:      "aes-256-gcm",
 		},
 		{
-			Type:      "trojan",
-			Port:      443,
-			Enable:    true,
-			Security:  "tls",
-			SNI:       "tls.example.com",
-			Transport: "tcp",
+			ListenerKey: "listener-trojan",
+			Type:        "trojan",
+			Port:        443,
+			Enable:      true,
+			Security:    "tls",
+			SNI:         "tls.example.com",
+			Transport:   "tcp",
 		},
 	}); err != nil {
 		panic(err)
@@ -122,28 +156,30 @@ func getServers() []*node.Node {
 	enabled := true
 	return []*node.Node{
 		{
-			Id:       1,
-			Name:     "TestShadowSocks",
-			Tags:     "stable,asia",
-			Port:     1234,
-			Address:  "ss.example.com",
-			ServerId: srv.Id,
-			Server:   srv,
-			Protocol: "shadowsocks",
-			Enabled:  &enabled,
-			Sort:     1,
+			Id:          1,
+			Name:        "TestShadowSocks",
+			Tags:        "stable,asia",
+			Port:        1234,
+			Address:     "ss.example.com",
+			ServerId:    srv.Id,
+			Server:      srv,
+			ListenerKey: "listener-ss",
+			Protocol:    "shadowsocks",
+			Enabled:     &enabled,
+			Sort:        1,
 		},
 		{
-			Id:       2,
-			Name:     "TestTrojan",
-			Tags:     "tls",
-			Port:     443,
-			Address:  "trojan.example.com",
-			ServerId: srv.Id,
-			Server:   srv,
-			Protocol: "trojan",
-			Enabled:  &enabled,
-			Sort:     2,
+			Id:          2,
+			Name:        "TestTrojan",
+			Tags:        "tls",
+			Port:        443,
+			Address:     "trojan.example.com",
+			ServerId:    srv.Id,
+			Server:      srv,
+			ListenerKey: "listener-trojan",
+			Protocol:    "trojan",
+			Enabled:     &enabled,
+			Sort:        2,
 		},
 	}
 }
@@ -153,12 +189,14 @@ func TestAdapterProxyCertPinForcesCertVerification(t *testing.T) {
 	srv := &node.Server{Id: 1, Name: "PinServer", Address: "example.com"}
 	if err := srv.MarshalProtocols([]node.Protocol{
 		{
-			Type: "vmess", Port: 443, Enable: true, Security: "tls",
+			ListenerKey: "listener-vmess",
+			Type:        "vmess", Port: 443, Enable: true, Security: "tls",
 			SNI: "pin.example.com", CertMode: "self",
 			AllowInsecure: true, CertPinSHA256: pin,
 		},
 		{
-			Type: "trojan", Port: 444, Enable: true, Security: "tls",
+			ListenerKey: "listener-trojan",
+			Type:        "trojan", Port: 444, Enable: true, Security: "tls",
 			SNI: "pin.example.com", CertMode: "http",
 			AllowInsecure: true,
 		},
@@ -168,8 +206,8 @@ func TestAdapterProxyCertPinForcesCertVerification(t *testing.T) {
 
 	enabled := true
 	nodes := []*node.Node{
-		{Id: 1, Name: "Pinned", Port: 443, Address: "a.example.com", ServerId: srv.Id, Server: srv, Protocol: "vmess", Enabled: &enabled},
-		{Id: 2, Name: "Unpinned", Port: 444, Address: "b.example.com", ServerId: srv.Id, Server: srv, Protocol: "trojan", Enabled: &enabled},
+		{Id: 1, Name: "Pinned", Port: 443, Address: "a.example.com", ServerId: srv.Id, Server: srv, ListenerKey: "listener-vmess", Protocol: "vmess", Enabled: &enabled},
+		{Id: 2, Name: "Unpinned", Port: 444, Address: "b.example.com", ServerId: srv.Id, Server: srv, ListenerKey: "listener-trojan", Protocol: "trojan", Enabled: &enabled},
 	}
 	proxies, err := NewAdapter(tpl).Proxies(nodes)
 	if err != nil {
@@ -196,7 +234,8 @@ func TestAdapterPreservesNowhereContractAndUserSharedKey(t *testing.T) {
 	const nw3Key = "550e8400e29b41d4a716446655440000"
 	srv := &node.Server{Id: 1, Name: "NowhereServer", Address: "example.com"}
 	if err := srv.MarshalProtocols([]node.Protocol{{
-		Type: "nowhere", Port: 443, Version: 3, Enable: true, Security: "tls", Network: "mix",
+		ListenerKey: "listener-nowhere",
+		Type:        "nowhere", Port: 443, Version: 3, Enable: true, Security: "tls", Network: "mix",
 		SNI: "nowhere.example", ALPN: []string{"nw3"}, CertMode: "self", CertPinSHA256: pin,
 	}}); err != nil {
 		t.Fatalf("marshal protocols: %v", err)
@@ -207,7 +246,7 @@ func TestAdapterPreservesNowhereContractAndUserSharedKey(t *testing.T) {
 		`{{ (index .Proxies 0).Type }}|{{ (index .Proxies 0).Network }}|{{ .UserInfo.NowhereKey }}`,
 		WithServers([]*node.Node{{
 			Id: 1, Name: "Nowhere", Port: 443, Address: "nowhere.example", ServerId: srv.Id,
-			Server: srv, Protocol: "nowhere", Enabled: &enabled,
+			Server: srv, ListenerKey: "listener-nowhere", Protocol: "nowhere", Enabled: &enabled,
 		}}),
 		WithUserInfo(User{Password: sharedKey}),
 		WithOutputFormat("text"),

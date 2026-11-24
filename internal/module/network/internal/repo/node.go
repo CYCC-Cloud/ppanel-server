@@ -252,7 +252,7 @@ func (m *nodeRepo) FindOneNode(ctx context.Context, id int64) (*node.Node, error
 }
 
 // nodeAdminColumns are the node columns an administrator's update writes.
-var nodeAdminColumns = []string{"name", "tags", "port", "address", "server_id", "protocol", "enabled", "sort"}
+var nodeAdminColumns = []string{"name", "tags", "port", "address", "server_id", "protocol", "listener_key", "enabled", "sort"}
 
 // UpdateNode stores an administrator's changes to the node: its settings
 // columns, zero values included, and updated_at; the loaded Server
@@ -262,6 +262,13 @@ func (m *nodeRepo) UpdateNode(ctx context.Context, data *node.Node) error {
 		return err
 	}
 	return m.DB.WithContext(ctx).Model(data).Select(nodeAdminColumns).Updates(data).Error
+}
+
+// UpdateNodeListenerKey writes only the listener binding, bypassing the
+// full-row update hooks that reorder node sort values.
+func (m *nodeRepo) UpdateNodeListenerKey(ctx context.Context, id int64, listenerKey string) error {
+	return m.DB.WithContext(ctx).Model(&node.Node{}).Where("id = ?", id).
+		UpdateColumn("listener_key", listenerKey).Error
 }
 
 func (m *nodeRepo) DeleteNode(ctx context.Context, id int64) error {
@@ -295,10 +302,10 @@ func (m *nodeRepo) StatusCache(ctx context.Context, serverId int64) (node.Status
 	return status, err
 }
 
-// OnlineUserSubscribe returns the subscriptions a server reports online over
-// the protocol, with their IPs.
-func (m *nodeRepo) OnlineUserSubscribe(ctx context.Context, serverId int64, protocol string) (node.OnlineUserSubscribe, error) {
-	key := fmt.Sprintf(node.OnlineUserCacheKeyWithSubscribe, serverId, protocol)
+// OnlineUserSubscribe returns the subscriptions a single server listener
+// reports online, with their IPs.
+func (m *nodeRepo) OnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string) (node.OnlineUserSubscribe, error) {
+	key := fmt.Sprintf(node.OnlineUserCacheKeyWithSubscribe, serverId, listenerKey)
 	now, err := m.Cache.Time(ctx).Result()
 	if err != nil {
 		return nil, err
@@ -338,10 +345,10 @@ func (m *nodeRepo) OnlineUserSubscribe(ctx context.Context, serverId int64, prot
 	return subscribe, err
 }
 
-// UpdateOnlineUserSubscribe stores the subscriptions a server reports online
-// over the protocol until the report expires.
-func (m *nodeRepo) UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, protocol string, subscribe node.OnlineUserSubscribe) error {
-	key := fmt.Sprintf(node.OnlineUserCacheKeyWithSubscribe, serverId, protocol)
+// UpdateOnlineUserSubscribe stores the subscriptions a single server listener
+// reports online until the report expires.
+func (m *nodeRepo) UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string, subscribe node.OnlineUserSubscribe) error {
+	key := fmt.Sprintf(node.OnlineUserCacheKeyWithSubscribe, serverId, listenerKey)
 	data, err := json.Marshal(subscribe)
 	if err != nil {
 		return err
@@ -420,6 +427,13 @@ func (m *nodeRepo) QueryServerList(ctx context.Context, ids []int64) (servers []
 	return
 }
 
+// QueryAllServers lists every server in id order. The listener-identity
+// upgrade needs the full set, so it deliberately takes no filter.
+func (m *nodeRepo) QueryAllServers(ctx context.Context) (servers []*node.Server, err error) {
+	err = m.WithContext(ctx).Model(&node.Server{}).Order("id ASC").Find(&servers).Error
+	return
+}
+
 func (m *nodeRepo) QueryServerSorts(ctx context.Context) ([]node.SortItem, error) {
 	var items []node.SortItem
 	err := m.WithContext(ctx).Model(&node.Server{}).Select("id", "sort").Order("sort ASC").Find(&items).Error
@@ -459,6 +473,9 @@ func (m *nodeRepo) nodeListQuery(ctx context.Context, params *node.FilterNodePar
 	}
 	if len(params.Tag) > 0 {
 		query = query.Scopes(nodeInSet("tags", params.Tag))
+	}
+	if params.ListenerKey != "" {
+		query = query.Where("listener_key = ?", params.ListenerKey)
 	}
 	if params.Protocol != "" {
 		query = query.Where("protocol = ?", params.Protocol)

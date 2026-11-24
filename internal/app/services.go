@@ -113,6 +113,7 @@ func pingRedis(rds *redis.Client) func(context.Context) error {
 
 func (srv *Application) bootstrapDependencies() *bootstrap.Dependencies {
 	return &bootstrap.Dependencies{
+		Network:                  srv.Network,
 		Config:                   srv.Runtime.Config,
 		UpdateRuntime:            srv.Runtime.UpdateRuntime,
 		Settings:                 srv.Store.System(),

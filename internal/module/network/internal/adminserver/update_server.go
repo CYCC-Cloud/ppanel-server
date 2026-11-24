@@ -46,7 +46,20 @@ func (s *Service) UpdateServer(ctx context.Context, req *dto.UpdateServerRequest
 	existingKeys := protocolKeyLookup(existingProtocols)
 	existingServerKeys := serverKeyLookup(existingProtocols)
 	existingRealityKeys := realityProtocolKeyLookup(existingProtocols)
-	existingProtocolLookup := protocolLookup(existingProtocols)
+	existingListeners := listenerLookup(existingProtocols)
+	existingByType := make(map[string][]node.Protocol, len(existingProtocols))
+	for _, existing := range existingProtocols {
+		typeName := normalizedProtocolType(existing.Type)
+		existingByType[typeName] = append(existingByType[typeName], existing)
+	}
+	requestTypeCounts := make(map[string]int, len(req.Protocols))
+	requestedListenerKeys := make(map[string]bool, len(req.Protocols))
+	for _, item := range req.Protocols {
+		requestTypeCounts[normalizedProtocolType(item.Type)]++
+		if item.ListenerKey != "" {
+			requestedListenerKeys[item.ListenerKey] = true
+		}
+	}
 	protocols := make([]node.Protocol, 0)
 	for index, item := range req.Protocols {
 		if item.Type == "" {
@@ -56,7 +69,14 @@ func (s *Service) UpdateServer(ctx context.Context, req *dto.UpdateServerRequest
 		if err != nil {
 			return err
 		}
-		if existing, ok := existingProtocolLookup[normalizedProtocolType(item.Type)]; ok {
+		if protocol.ListenerKey == "" {
+			typeName := normalizedProtocolType(item.Type)
+			if err := adoptListenerKey(&protocol, existingByType[typeName], requestTypeCounts[typeName], requestedListenerKeys); err != nil {
+				return err
+			}
+		}
+		ensureListenerKey(&protocol)
+		if existing, ok := existingListeners[protocol.ListenerKey]; ok {
 			protocol, err = mergeMissingProtocolFields(protocol, existing, protocolFieldSetAt(req.ProtocolFieldSets, index))
 			if err != nil {
 				return fmt.Errorf("protocols merge error: %w: %w", err, xerr.NewErrCodeMsg(xerr.InvalidParams, "protocols merge error"))

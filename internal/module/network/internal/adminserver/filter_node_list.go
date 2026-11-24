@@ -26,17 +26,18 @@ func (s *Service) FilterNodeList(ctx context.Context, req *dto.FilterNodeListReq
 	list := make([]dto.Node, 0)
 	for _, datum := range data {
 		list = append(list, dto.Node{
-			Id:        datum.Id,
-			Name:      datum.Name,
-			Tags:      slicesx.RemoveDuplicateElements(strings.Split(datum.Tags, ",")...),
-			Port:      datum.Port,
-			Address:   datum.Address,
-			ServerId:  datum.ServerId,
-			Protocol:  datum.Protocol,
-			Enabled:   datum.Enabled,
-			Sort:      datum.Sort,
-			CreatedAt: datum.CreatedAt.UnixMilli(),
-			UpdatedAt: datum.UpdatedAt.UnixMilli(),
+			Id:          datum.Id,
+			Name:        datum.Name,
+			Tags:        slicesx.RemoveDuplicateElements(strings.Split(datum.Tags, ",")...),
+			Port:        datum.Port,
+			Address:     datum.Address,
+			ServerId:    datum.ServerId,
+			ListenerKey: datum.ListenerKey,
+			Protocol:    datum.Protocol,
+			Enabled:     datum.Enabled,
+			Sort:        datum.Sort,
+			CreatedAt:   datum.CreatedAt.UnixMilli(),
+			UpdatedAt:   datum.UpdatedAt.UnixMilli(),
 		})
 	}
 

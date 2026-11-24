@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 	"uuid"
 
@@ -34,6 +33,14 @@ func TestPlaceholderServerUserUsesNewUUIDV7(t *testing.T) {
 	}
 }
 
+type staticServerReader struct {
+	server *node.Server
+}
+
+func (r staticServerReader) FindOneServer(context.Context, int64) (*node.Server, error) {
+	return r.server, nil
+}
+
 func TestCachedPlaceholderKeepsUUIDAndETag(t *testing.T) {
 	server := miniredis.RunT(t)
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
@@ -43,12 +50,18 @@ func TestCachedPlaceholderKeepsUUIDAndETag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := &dto.GetServerUserListRequest{ServerId: 1, Protocol: "vless"}
-	if err := server.Set(fmt.Sprintf("%s%d:%s", node.ServerUserListCacheKey, req.ServerId, req.Protocol), string(payload)); err != nil {
+	req := &dto.GetServerUserListRequest{
+		ServerCommon: dto.ServerCommon{ServerId: 1, Protocol: "vless", ListenerKey: "listener-vless"},
+	}
+	if err := server.Set(serverUserListCacheKey(req.ServerId, req.ListenerKey), string(payload)); err != nil {
 		t.Fatal(err)
 	}
-	// No repositories are provided: a cache hit must not rebuild the list.
-	service := NewService(Deps{Redis: client})
+	// The server row is resolved to validate the listener identity; no other
+	// repository is needed on a cache hit.
+	service := NewService(Deps{
+		Redis:   client,
+		Servers: staticServerReader{server: &node.Server{Id: 1, Protocols: `[{"listener_key":"listener-vless","type":"vless","enable":true}]`}},
+	})
 	etag := httpx.GenerateETag(payload)
 	for range 2 {
 		resp, meta, err := service.GetServerUserList(context.Background(), req, RequestMeta{})

@@ -7,8 +7,12 @@ const (
 	// configs and the user lists.
 	ServerCacheTTL = 5 * time.Minute
 
-	// ServerUserListCacheKey prefixes the cached user lists of a server.
+	// ServerUserListCacheKey prefixes listener-scoped cached user lists.
 	ServerUserListCacheKey = "server:user:"
+
+	// ServerProtocolUserListCacheKey prefixes the type-wide allowlist used by
+	// traffic and online reports.
+	ServerProtocolUserListCacheKey = "server:user:protocol:"
 
 	// ServerConfigCacheKey prefixes the cached configs of a server.
 	ServerConfigCacheKey = "server:config:"
@@ -38,9 +42,13 @@ type FilterNodeParams struct {
 	ServerId []int64  // Server IDs
 	Tag      []string // Tags
 	Search   string   // Search Address or Name
-	Protocol string   // Protocol
-	Preload  bool     // Preload Server
-	Enabled  *bool    // Enabled
+	// ListenerKey selects the nodes bound to one server listener. It is the
+	// listener-scoped selector; Protocol only narrows by protocol type and
+	// cannot separate two listeners that share one.
+	ListenerKey string
+	Protocol    string // Protocol
+	Preload     bool   // Preload Server
+	Enabled     *bool  // Enabled
 }
 
 // SortItem is a list entry's position.

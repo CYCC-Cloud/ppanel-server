@@ -27,40 +27,56 @@ func TestEnsureGeneratedProtocolKeySkipsSnell(t *testing.T) {
 }
 
 func TestEnsureGeneratedProtocolKeyPreservesExistingKey(t *testing.T) {
-	protocol := node.Protocol{Type: "shadowsocksr"}
-	ensureGeneratedProtocolKey(&protocol, map[string]string{"shadowsocksr": "existing-psk"})
+	protocol := node.Protocol{ListenerKey: "listener-ssr", Type: "shadowsocksr"}
+	ensureGeneratedProtocolKey(&protocol, map[string]string{"listener-ssr": "existing-psk"})
 	if protocol.ServerKey != "existing-psk" {
 		t.Fatalf("ServerKey = %q, want existing-psk", protocol.ServerKey)
 	}
 }
 
+// Two listeners of the same protocol type own separate credentials, so one
+// listener's stored key must never be handed to another.
+func TestEnsureGeneratedProtocolKeyIgnoresSiblingListenerKey(t *testing.T) {
+	protocol := node.Protocol{ListenerKey: "listener-b", Type: "shadowsocksr"}
+	ensureGeneratedProtocolKey(&protocol, map[string]string{"listener-a": "sibling-psk"})
+	if protocol.ServerKey == "sibling-psk" {
+		t.Fatal("ServerKey took the sibling listener's key")
+	}
+	if protocol.ServerKey == "" {
+		t.Fatal("ServerKey = empty, want a generated key")
+	}
+}
+
 func TestEnsureGeneratedProtocolKeyKeepsProvidedKey(t *testing.T) {
-	protocol := node.Protocol{Type: "shadowsocksr", ServerKey: "provided"}
-	ensureGeneratedProtocolKey(&protocol, map[string]string{"shadowsocksr": "existing"})
+	protocol := node.Protocol{ListenerKey: "listener-ssr", Type: "shadowsocksr", ServerKey: "provided"}
+	ensureGeneratedProtocolKey(&protocol, map[string]string{"listener-ssr": "existing"})
 	if protocol.ServerKey != "provided" {
 		t.Fatalf("ServerKey = %q, want provided", protocol.ServerKey)
 	}
 }
 
-func TestProtocolKeyLookupNormalizesAliases(t *testing.T) {
-	keys := protocolKeyLookup([]node.Protocol{{Type: "ssr", ServerKey: "secret"}})
-	if keys["shadowsocksr"] != "secret" {
-		t.Fatalf("SSR key = %q, want secret", keys["shadowsocksr"])
+func TestProtocolKeyLookupKeysByListener(t *testing.T) {
+	keys := protocolKeyLookup([]node.Protocol{
+		{ListenerKey: "listener-a", Type: "ssr", ServerKey: "secret-a"},
+		{ListenerKey: "listener-b", Type: "shadowsocksr", ServerKey: "secret-b"},
+	})
+	if keys["listener-a"] != "secret-a" || keys["listener-b"] != "secret-b" {
+		t.Fatalf("keys = %#v, want one entry per listener", keys)
 	}
 }
 
 func TestEnsureShadowsocks2022ServerKeyPreservesExistingKey(t *testing.T) {
-	protocol := node.Protocol{Type: "shadowsocks", Cipher: "2022-blake3-aes-128-gcm"}
-	ensureShadowsocks2022ServerKey(&protocol, map[string]string{"shadowsocks": "1234567890abcdef"})
+	protocol := node.Protocol{ListenerKey: "listener-ss", Type: "shadowsocks", Cipher: "2022-blake3-aes-128-gcm"}
+	ensureShadowsocks2022ServerKey(&protocol, map[string]string{"listener-ss": "1234567890abcdef"})
 	if protocol.ServerKey != "1234567890abcdef" {
 		t.Fatalf("ServerKey = %q, want existing key", protocol.ServerKey)
 	}
 }
 
 func TestEnsureRealityProtocolKeyPreservesExistingKey(t *testing.T) {
-	protocol := node.Protocol{Type: "vless", Security: "reality"}
+	protocol := node.Protocol{ListenerKey: "listener-vless", Type: "vless", Security: "reality"}
 	ensureErr := ensureRealityProtocolKey(&protocol, map[string]realityProtocolKey{
-		"vless": {
+		"listener-vless": {
 			privateKey: "existing-private",
 			publicKey:  "existing-public",
 			shortID:    "existing-short-id",
@@ -76,8 +92,26 @@ func TestEnsureRealityProtocolKeyPreservesExistingKey(t *testing.T) {
 	}
 }
 
+// A second REALITY listener of the same type must get its own key pair rather
+// than inherit its sibling's.
+func TestEnsureRealityProtocolKeyIgnoresSiblingListenerKeys(t *testing.T) {
+	protocol := node.Protocol{ListenerKey: "listener-b", Type: "vless", Security: "reality"}
+	if err := ensureRealityProtocolKey(&protocol, map[string]realityProtocolKey{
+		"listener-a": {privateKey: "sibling-private", publicKey: "sibling-public", shortID: "sibling-short"},
+	}); err != nil {
+		t.Fatalf("ensureRealityProtocolKey() error = %v", err)
+	}
+	if protocol.RealityPrivateKey == "sibling-private" || protocol.RealityPublicKey == "sibling-public" {
+		t.Fatalf("Reality keys were copied from the sibling listener: %#v", protocol)
+	}
+	if protocol.RealityPrivateKey == "" || protocol.RealityPublicKey == "" || protocol.RealityShortId == "" {
+		t.Fatalf("Reality keys were not generated: %#v", protocol)
+	}
+}
+
 func TestEnsureRealityProtocolKeyKeepsProvidedCompleteKey(t *testing.T) {
 	protocol := node.Protocol{
+		ListenerKey:       "listener-vless",
 		Type:              "vless",
 		Security:          "reality",
 		RealityPrivateKey: "provided-private",
@@ -85,7 +119,7 @@ func TestEnsureRealityProtocolKeyKeepsProvidedCompleteKey(t *testing.T) {
 		RealityShortId:    "provided-short-id",
 	}
 	ensureErr := ensureRealityProtocolKey(&protocol, map[string]realityProtocolKey{
-		"vless": {
+		"listener-vless": {
 			privateKey: "existing-private",
 			publicKey:  "existing-public",
 			shortID:    "existing-short-id",

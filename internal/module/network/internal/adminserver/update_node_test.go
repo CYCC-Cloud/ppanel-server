@@ -57,6 +57,9 @@ func TestUpdateNodeKeepsTheSwitchTheRequestOmits(t *testing.T) {
 	db, store := newNodeRepoStore(t)
 	disabled := false
 	server := &node.Server{Name: "edge"}
+	if err := server.MarshalProtocols([]node.Protocol{{ListenerKey: "edge-vless", Type: "vless", Port: 443, Enable: true}}); err != nil {
+		t.Fatal(err)
+	}
 	if err := db.Create(server).Error; err != nil {
 		t.Fatal(err)
 	}
