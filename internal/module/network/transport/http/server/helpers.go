@@ -60,9 +60,12 @@ func serverCommonRequest(ctx *app.RequestContext) (dto.ServerCommon, error) {
 		serverID = id
 	}
 	return dto.ServerCommon{
-		Protocol:  ctx.Query("protocol"),
-		ServerId:  serverID,
-		SecretKey: ctx.Query("secret_key"),
+		// A node that knows its listener key sends it; one that predates
+		// listener identity sends only its protocol.
+		ListenerKey: ctx.Query("listener_key"),
+		Protocol:    ctx.Query("protocol"),
+		ServerId:    serverID,
+		SecretKey:   ctx.Query("secret_key"),
 	}, nil
 }
 

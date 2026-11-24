@@ -11,6 +11,7 @@ import (
 	dto "github.com/perfect-panel/backend/internal/module/network/contract"
 	"github.com/perfect-panel/backend/internal/module/network/internal/adminserver"
 	"github.com/perfect-panel/backend/internal/module/network/internal/edge"
+	"github.com/perfect-panel/backend/internal/module/network/internal/listeneridentity"
 	"github.com/perfect-panel/backend/internal/module/network/internal/repo"
 	"github.com/perfect-panel/backend/internal/module/network/internal/serverapi"
 	"github.com/perfect-panel/backend/internal/module/network/internal/trafficstat"
@@ -67,6 +68,10 @@ type Service interface {
 	// Access serves the other modules' reads and cache invalidation (see
 	// access.go).
 	Access
+
+	// UpgradeListenerIdentity persists a listener key for every listener and
+	// node that predates listener identity before node traffic is served.
+	UpgradeListenerIdentity(ctx context.Context) error
 }
 
 // ErrManifestNotFound re-exports the edge subdomain's not-found sentinel for
@@ -166,17 +171,19 @@ func New(deps Deps) Service {
 			Traffic: deps.Store.TrafficLog(),
 			Logs:    deps.Logs,
 		}),
-		store: deps.Store,
+		store:     deps.Store,
+		listeners: listeneridentity.NewService(listeneridentity.Deps{Store: deps.Store}),
 	}
 }
 
 type service struct {
 	statistics
-	admin *adminserver.Service
-	api   *serverapi.Service
-	edge  *edge.Service
-	stats *trafficstat.Service
-	store Store
+	admin     *adminserver.Service
+	api       *serverapi.Service
+	edge      *edge.Service
+	stats     *trafficstat.Service
+	store     Store
+	listeners *listeneridentity.Service
 }
 
 func (s *service) CreateServer(ctx context.Context, req *dto.CreateServerRequest) error {
@@ -273,6 +280,10 @@ func (s *service) ServerPushUserTraffic(ctx context.Context, req *dto.ServerPush
 
 func (s *service) EdgeManifest(ctx context.Context, token string) (*dto.EdgeManifestResponse, error) {
 	return s.edge.Manifest(ctx, token)
+}
+
+func (s *service) UpgradeListenerIdentity(ctx context.Context) error {
+	return s.listeners.Run(ctx)
 }
 
 // Store is the persistence capability required by this package. It excludes

@@ -2,9 +2,9 @@ package node
 
 import (
 	"encoding/json"
-	"time"
-
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/perfect-panel/backend/pkg/logger"
 	"gorm.io/gorm"
@@ -68,18 +68,31 @@ func (m *Server) BeforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
-// MarshalProtocols stores list as the server's protocols. Every protocol
-// needs a type, and no type may appear twice.
+// MarshalProtocols stores the server's protocols. A server may run several
+// listeners of one type, so the listener key—not the protocol type—is each
+// listener's identity. Enabled listeners must not share an inbound port; a
+// disabled listener keeps its port so it can be re-enabled unchanged.
 func (m *Server) MarshalProtocols(list []Protocol) error {
-	var validate = make(map[string]bool)
+	listenerKeys := make(map[string]bool, len(list))
+	enabledPorts := make(map[uint16]bool, len(list))
 	for _, protocol := range list {
 		if protocol.Type == "" {
 			return errors.New("protocol type is required")
 		}
-		if _, exists := validate[protocol.Type]; exists {
-			return errors.New("duplicate protocol type: " + protocol.Type)
+		if protocol.ListenerKey == "" {
+			return errors.New("listener key is required for protocol: " + protocol.Type)
 		}
-		validate[protocol.Type] = true
+		if listenerKeys[protocol.ListenerKey] {
+			return errors.New("duplicate listener key: " + protocol.ListenerKey)
+		}
+		listenerKeys[protocol.ListenerKey] = true
+		if !protocol.Enable {
+			continue
+		}
+		if enabledPorts[protocol.Port] {
+			return fmt.Errorf("duplicate listener port: %d", protocol.Port)
+		}
+		enabledPorts[protocol.Port] = true
 	}
 	data, err := json.Marshal(list)
 	if err != nil {
@@ -109,6 +122,10 @@ func (m *Server) UnmarshalProtocols() ([]Protocol, error) {
 // Protocol is one protocol a server offers, as stored in the server's
 // protocols JSON.
 type Protocol struct {
+	// ListenerKey is the stable identity used to resolve this listener.
+	ListenerKey string `json:"listener_key"`
+	// ListenerName is an optional administrator-facing label.
+	ListenerName string `json:"listener_name,omitempty"`
 	// Common: the protocol type, such as shadowsocks, vless, vmess, hysteria2, tuic or nowhere.
 	Type string `json:"type"`
 	// Common: the inbound listening port.

@@ -56,7 +56,7 @@ func (s *scopeStore) ListNodes(_ context.Context, params *node.FilterNodeParams)
 	if params.Protocol != "vless" {
 		return nil, nil
 	}
-	return []*node.Node{{Id: 11, ServerId: s.server.Id, Protocol: "vless"}}, nil
+	return []*node.Node{{Id: 11, ServerId: s.server.Id, Protocol: "vless", ListenerKey: "listener-vless"}}, nil
 }
 
 func (s *scopeStore) SetServerCache(ctx context.Context, _ int64, key string, value any, _ int64) error {
@@ -108,7 +108,7 @@ func newScopeDeps(t testing.TB) (Deps, *scopeStore, *redis.Client) {
 	redisServer := miniredis.RunT(t)
 	client := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
-	store := &scopeStore{redis: client, server: &node.Server{Id: 4, Protocols: `[{"type":"vless","ratio":1}]`}}
+	store := &scopeStore{redis: client, server: &node.Server{Id: 4, Protocols: `[{"listener_key":"listener-vless","type":"vless","ratio":1,"enable":true}]`}}
 	return Deps{
 		Servers: store, Nodes: store, Caches: store, Subscriptions: store, Accounts: store,
 		Redis: client, Config: func() Snapshot { return Snapshot{} },
@@ -133,33 +133,37 @@ func servedIDs(t *testing.T, deps Deps) string {
 	return strings.Join(list, ",")
 }
 
-// The served scope is the node's own user list: a miss rebuilds and caches
-// it like GET /v1/server/user, and later reports read the cache.
-func TestServedSubscriptionIDsSharesTheUserListCache(t *testing.T) {
+// The report allowlist is keyed by protocol type, while the node's list is
+// cached by listener identity.
+func TestServedSubscriptionIDsUsesProtocolTypeCache(t *testing.T) {
 	deps, store, client := newScopeDeps(t)
 	if got := servedIDs(t, deps); got != "21" {
 		t.Fatalf("served = %q, want 21 (disabled owner excluded)", got)
 	}
-	if store.cacheSet != serverUserListCacheKey(4, "vless") || store.lookups != 1 {
-		t.Fatalf("rebuild did not populate the user-list cache: key=%q lookups=%d", store.cacheSet, store.lookups)
+	if store.cacheSet != serverProtocolUserListCacheKey(4, "vless") || store.lookups != 1 {
+		t.Fatalf("rebuild did not populate the protocol-scope user-list cache: key=%q lookups=%d", store.cacheSet, store.lookups)
 	}
-	// The node's own pull now hits the list the report rebuilt.
-	resp, _, err := NewService(deps).GetServerUserList(context.Background(), &dto.GetServerUserListRequest{ServerCommon: dto.ServerCommon{ServerId: 4, Protocol: "vless"}}, RequestMeta{})
+	resp, _, err := NewService(deps).GetServerUserList(context.Background(), &dto.GetServerUserListRequest{
+		ServerCommon: dto.ServerCommon{ServerId: 4, Protocol: "vless", ListenerKey: "listener-vless"},
+	}, RequestMeta{})
 	if err != nil || len(resp.Users) != 1 || resp.Users[0].Id != 21 {
 		t.Fatalf("user list = %+v, %v", resp, err)
 	}
-	if got := servedIDs(t, deps); got != "21" || store.lookups != 1 {
-		t.Fatalf("cached scope = %q after %d lookups, want 21 from the cache", got, store.lookups)
+	if store.cacheSet != serverUserListCacheKey(4, "listener-vless") || store.lookups != 2 {
+		t.Fatalf("listener list was not rebuilt in its own cache scope: key=%q lookups=%d", store.cacheSet, store.lookups)
+	}
+	if got := servedIDs(t, deps); got != "21" || store.lookups != 2 {
+		t.Fatalf("cached scope = %q after %d lookups, want 21 from the protocol cache", got, store.lookups)
 	}
 
 	// A protocol without nodes rebuilds to the placeholder, which serves
-	// nobody, and caches it for the node.
+	// nobody, and caches it for report validation.
 	got, err := NewService(deps).servedSubscriptionIDs(context.Background(), 4, "trojan")
 	if err != nil || len(got) != 0 {
 		t.Fatalf("placeholder list served %v, %v", got, err)
 	}
-	if cached, err := client.Get(context.Background(), serverUserListCacheKey(4, "trojan")).Result(); err != nil || !strings.Contains(cached, `"id":1`) {
-		t.Fatalf("placeholder list not cached: %q, %v", cached, err)
+	if cached, err := client.Get(context.Background(), serverProtocolUserListCacheKey(4, "trojan")).Result(); err != nil || !strings.Contains(cached, `"id":1`) {
+		t.Fatalf("placeholder protocol-scope list not cached: %q, %v", cached, err)
 	}
 }
 
@@ -172,7 +176,7 @@ func TestServedSubscriptionIDsIgnoresCachedPlaceholder(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := client.Set(context.Background(), serverUserListCacheKey(4, "vless"), payload, time.Minute).Err(); err != nil {
+		if err := client.Set(context.Background(), serverProtocolUserListCacheKey(4, "vless"), payload, time.Minute).Err(); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -202,7 +206,7 @@ func TestServedSubscriptionIDsIgnoresCachedPlaceholder(t *testing.T) {
 func TestServerPushUserTrafficDropsSubscriptionsTheServerDoesNotServe(t *testing.T) {
 	deps, _, client := newScopeDeps(t)
 	err := NewService(deps).ServerPushUserTraffic(context.Background(), &dto.ServerPushUserTrafficRequest{
-		ServerCommon: dto.ServerCommon{ServerId: 4, Protocol: "vless"},
+		ServerCommon: dto.ServerCommon{ServerId: 4, Protocol: "vless", ListenerKey: "listener-vless"},
 		Traffic: []dto.UserTraffic{
 			{SID: 21, Upload: 5, Download: 7},
 			{SID: 22, Upload: 1 << 30, Download: 1 << 30},
@@ -222,5 +226,31 @@ func TestServerPushUserTrafficDropsSubscriptionsTheServerDoesNotServe(t *testing
 	}
 	if len(fields) != 2 || fields["4|21|u"] != "5" || fields["4|21|d"] != "7" {
 		t.Fatalf("bucket = %v, want only subscription 21", fields)
+	}
+}
+
+// Same-type listeners keep their own billing ratio: upstream would price the
+// report by the first vless listener's ratio.
+func TestServerPushUserTrafficUsesTheReportingListenersRatio(t *testing.T) {
+	deps, store, client := newScopeDeps(t)
+	store.server.Protocols = `[{"listener_key":"listener-vless","type":"vless","port":443,"ratio":1,"enable":true},` +
+		`{"listener_key":"listener-vless-2","type":"vless","port":8443,"ratio":2,"enable":true}]`
+	err := NewService(deps).ServerPushUserTraffic(context.Background(), &dto.ServerPushUserTrafficRequest{
+		ServerCommon: dto.ServerCommon{ServerId: 4, ListenerKey: "listener-vless-2"},
+		Traffic:      []dto.UserTraffic{{SID: 21, Upload: 5, Download: 7}},
+	})
+	if err != nil {
+		t.Fatalf("ServerPushUserTraffic: %v", err)
+	}
+	buckets, err := client.Keys(context.Background(), "traffic:agg:[0-9]*").Result()
+	if err != nil || len(buckets) != 1 {
+		t.Fatalf("traffic buckets = %v, %v", buckets, err)
+	}
+	fields, err := client.HGetAll(context.Background(), buckets[0]).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fields["4|21|u"] != "10" || fields["4|21|d"] != "14" {
+		t.Fatalf("bucket = %v, want subscription 21 billed at ratio 2", fields)
 	}
 }

@@ -10,20 +10,27 @@ import (
 	"github.com/perfect-panel/backend/pkg/xerr"
 )
 
-// CreateNode stores a new node of a server.
+// CreateNode stores a new node bound to one of its server's listeners.
 func (s *Service) CreateNode(ctx context.Context, req *dto.CreateNodeRequest) error {
+	nodeStore := s.deps.Store.Node()
+	server, err := nodeStore.FindOneServer(ctx, req.ServerId)
+	if err != nil {
+		logger.WithContext(ctx).Errorw("[CreateNode] FindOneServer error", logger.Field("error", err.Error()))
+		return xerr.Wrapf(err, xerr.DatabaseQueryError, "find server %d", req.ServerId)
+	}
 	data := node.Node{
-		Name:     req.Name,
-		Tags:     slicesx.StringSliceToString(req.Tags),
-		Enabled:  req.Enabled,
-		Port:     req.Port,
-		Address:  req.Address,
-		ServerId: req.ServerId,
-		Protocol: req.Protocol,
+		Name:    req.Name,
+		Tags:    slicesx.StringSliceToString(req.Tags),
+		Enabled: req.Enabled,
+		Address: req.Address,
 	}
-	if err := s.deps.Store.Node().InsertNode(ctx, &data); err != nil {
-		logger.WithContext(ctx).Errorw("[CreateNode] Insert Database Error: ", logger.Field("error", err.Error()))
-		return xerr.Errorf(xerr.DatabaseInsertError, "[CreateNode] Insert Database Error")
+	if err := bindNodeToListener(&data, server, req.ListenerKey, req.Protocol, req.Port); err != nil {
+		logger.WithContext(ctx).Errorw("[CreateNode] Bind listener error", logger.Field("error", err.Error()))
+		return err
 	}
-	return nil
+	if err := nodeStore.InsertNode(ctx, &data); err != nil {
+		logger.WithContext(ctx).Errorw("[CreateNode] Insert database error", logger.Field("error", err.Error()))
+		return xerr.Errorf(xerr.DatabaseInsertError, "[CreateNode] Insert database error")
+	}
+	return nodeStore.ClearServerCache(ctx, data.ServerId)
 }

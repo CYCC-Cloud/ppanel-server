@@ -34,6 +34,7 @@ func (s *Service) CreateServer(ctx context.Context, req *dto.CreateServerRequest
 		if err != nil {
 			return err
 		}
+		ensureListenerKey(&protocol)
 		ensureGeneratedProtocolKey(&protocol, nil)
 		ensureShadowsocks2022ServerKey(&protocol, nil)
 		if err := ensureRealityProtocolKey(&protocol, nil); err != nil {

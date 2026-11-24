@@ -1130,72 +1130,76 @@ func (x *Outbound) GetRules() []string {
 // protocol type identifies which fields are consumed by a node runtime; a flat
 // model matches the established PPanel and Star-Node integration contract.
 type ServerProtocol struct {
-	state                   protoimpl.MessageState `protogen:"open.v1"`
-	Type                    string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Port                    uint32                 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
-	Version                 int64                  `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	Mode                    string                 `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
-	Enable                  bool                   `protobuf:"varint,5,opt,name=enable,proto3" json:"enable,omitempty"`
-	Security                string                 `protobuf:"bytes,6,opt,name=security,proto3" json:"security,omitempty"`
-	Network                 string                 `protobuf:"bytes,7,opt,name=network,proto3" json:"network,omitempty"`
-	Sni                     string                 `protobuf:"bytes,8,opt,name=sni,proto3" json:"sni,omitempty"`
-	Alpn                    []string               `protobuf:"bytes,9,rep,name=alpn,proto3" json:"alpn,omitempty"`
-	AllowInsecure           bool                   `protobuf:"varint,10,opt,name=allow_insecure,json=allowInsecure,proto3" json:"allow_insecure,omitempty"`
-	Fingerprint             string                 `protobuf:"bytes,11,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`
-	RealityServerAddr       string                 `protobuf:"bytes,12,opt,name=reality_server_addr,json=realityServerAddr,proto3" json:"reality_server_addr,omitempty"`
-	RealityServerPort       int64                  `protobuf:"varint,13,opt,name=reality_server_port,json=realityServerPort,proto3" json:"reality_server_port,omitempty"`
-	RealityPrivateKey       string                 `protobuf:"bytes,14,opt,name=reality_private_key,json=realityPrivateKey,proto3" json:"reality_private_key,omitempty"`
-	RealityPublicKey        string                 `protobuf:"bytes,15,opt,name=reality_public_key,json=realityPublicKey,proto3" json:"reality_public_key,omitempty"`
-	RealityShortId          string                 `protobuf:"bytes,16,opt,name=reality_short_id,json=realityShortId,proto3" json:"reality_short_id,omitempty"`
-	Transport               string                 `protobuf:"bytes,17,opt,name=transport,proto3" json:"transport,omitempty"`
-	Host                    string                 `protobuf:"bytes,18,opt,name=host,proto3" json:"host,omitempty"`
-	Path                    string                 `protobuf:"bytes,19,opt,name=path,proto3" json:"path,omitempty"`
-	ServiceName             string                 `protobuf:"bytes,20,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	Cipher                  string                 `protobuf:"bytes,21,opt,name=cipher,proto3" json:"cipher,omitempty"`
-	ServerKey               string                 `protobuf:"bytes,22,opt,name=server_key,json=serverKey,proto3" json:"server_key,omitempty"`
-	Plugin                  string                 `protobuf:"bytes,23,opt,name=plugin,proto3" json:"plugin,omitempty"`
-	PluginOptions           *structpb.Value        `protobuf:"bytes,24,opt,name=plugin_options,json=pluginOptions,proto3" json:"plugin_options,omitempty"`
-	Flow                    string                 `protobuf:"bytes,25,opt,name=flow,proto3" json:"flow,omitempty"`
-	Uot                     bool                   `protobuf:"varint,26,opt,name=uot,proto3" json:"uot,omitempty"`
-	UotVersion              int64                  `protobuf:"varint,27,opt,name=uot_version,json=uotVersion,proto3" json:"uot_version,omitempty"`
-	AcceptProxyProtocol     bool                   `protobuf:"varint,28,opt,name=accept_proxy_protocol,json=acceptProxyProtocol,proto3" json:"accept_proxy_protocol,omitempty"`
-	HopPorts                string                 `protobuf:"bytes,29,opt,name=hop_ports,json=hopPorts,proto3" json:"hop_ports,omitempty"`
-	HopInterval             int64                  `protobuf:"varint,30,opt,name=hop_interval,json=hopInterval,proto3" json:"hop_interval,omitempty"`
-	ObfsPassword            string                 `protobuf:"bytes,31,opt,name=obfs_password,json=obfsPassword,proto3" json:"obfs_password,omitempty"`
-	DisableSni              bool                   `protobuf:"varint,32,opt,name=disable_sni,json=disableSni,proto3" json:"disable_sni,omitempty"`
-	ReduceRtt               bool                   `protobuf:"varint,33,opt,name=reduce_rtt,json=reduceRtt,proto3" json:"reduce_rtt,omitempty"`
-	Heartbeat               int64                  `protobuf:"varint,34,opt,name=heartbeat,proto3" json:"heartbeat,omitempty"`
-	UdpRelayMode            string                 `protobuf:"bytes,35,opt,name=udp_relay_mode,json=udpRelayMode,proto3" json:"udp_relay_mode,omitempty"`
-	CongestionController    string                 `protobuf:"bytes,36,opt,name=congestion_controller,json=congestionController,proto3" json:"congestion_controller,omitempty"`
-	QuicCongestionControl   string                 `protobuf:"bytes,37,opt,name=quic_congestion_control,json=quicCongestionControl,proto3" json:"quic_congestion_control,omitempty"`
-	Multiplex               string                 `protobuf:"bytes,38,opt,name=multiplex,proto3" json:"multiplex,omitempty"`
-	PaddingScheme           string                 `protobuf:"bytes,39,opt,name=padding_scheme,json=paddingScheme,proto3" json:"padding_scheme,omitempty"`
-	TrafficPattern          string                 `protobuf:"bytes,40,opt,name=traffic_pattern,json=trafficPattern,proto3" json:"traffic_pattern,omitempty"`
-	UserHintIsMandatory     bool                   `protobuf:"varint,41,opt,name=user_hint_is_mandatory,json=userHintIsMandatory,proto3" json:"user_hint_is_mandatory,omitempty"`
-	UpMbps                  int64                  `protobuf:"varint,42,opt,name=up_mbps,json=upMbps,proto3" json:"up_mbps,omitempty"`
-	DownMbps                int64                  `protobuf:"varint,43,opt,name=down_mbps,json=downMbps,proto3" json:"down_mbps,omitempty"`
-	Obfs                    string                 `protobuf:"bytes,44,opt,name=obfs,proto3" json:"obfs,omitempty"`
-	SsrProtocol             string                 `protobuf:"bytes,45,opt,name=ssr_protocol,json=ssrProtocol,proto3" json:"ssr_protocol,omitempty"`
-	ProtocolParam           string                 `protobuf:"bytes,46,opt,name=protocol_param,json=protocolParam,proto3" json:"protocol_param,omitempty"`
-	ObfsParam               string                 `protobuf:"bytes,47,opt,name=obfs_param,json=obfsParam,proto3" json:"obfs_param,omitempty"`
-	ObfsHost                string                 `protobuf:"bytes,48,opt,name=obfs_host,json=obfsHost,proto3" json:"obfs_host,omitempty"`
-	ObfsPath                string                 `protobuf:"bytes,49,opt,name=obfs_path,json=obfsPath,proto3" json:"obfs_path,omitempty"`
-	XhttpMode               string                 `protobuf:"bytes,50,opt,name=xhttp_mode,json=xhttpMode,proto3" json:"xhttp_mode,omitempty"`
-	XhttpExtra              string                 `protobuf:"bytes,51,opt,name=xhttp_extra,json=xhttpExtra,proto3" json:"xhttp_extra,omitempty"`
-	Encryption              string                 `protobuf:"bytes,52,opt,name=encryption,proto3" json:"encryption,omitempty"`
-	EncryptionMode          string                 `protobuf:"bytes,53,opt,name=encryption_mode,json=encryptionMode,proto3" json:"encryption_mode,omitempty"`
-	EncryptionRtt           string                 `protobuf:"bytes,54,opt,name=encryption_rtt,json=encryptionRtt,proto3" json:"encryption_rtt,omitempty"`
-	EncryptionTicket        string                 `protobuf:"bytes,55,opt,name=encryption_ticket,json=encryptionTicket,proto3" json:"encryption_ticket,omitempty"`
-	EncryptionServerPadding string                 `protobuf:"bytes,56,opt,name=encryption_server_padding,json=encryptionServerPadding,proto3" json:"encryption_server_padding,omitempty"`
-	EncryptionPrivateKey    string                 `protobuf:"bytes,57,opt,name=encryption_private_key,json=encryptionPrivateKey,proto3" json:"encryption_private_key,omitempty"`
-	EncryptionClientPadding string                 `protobuf:"bytes,58,opt,name=encryption_client_padding,json=encryptionClientPadding,proto3" json:"encryption_client_padding,omitempty"`
-	EncryptionPassword      string                 `protobuf:"bytes,59,opt,name=encryption_password,json=encryptionPassword,proto3" json:"encryption_password,omitempty"`
-	EchEnable               bool                   `protobuf:"varint,60,opt,name=ech_enable,json=echEnable,proto3" json:"ech_enable,omitempty"`
-	EchServerName           string                 `protobuf:"bytes,61,opt,name=ech_server_name,json=echServerName,proto3" json:"ech_server_name,omitempty"`
-	Ratio                   float64                `protobuf:"fixed64,62,opt,name=ratio,proto3" json:"ratio,omitempty"`
-	CertMode                string                 `protobuf:"bytes,63,opt,name=cert_mode,json=certMode,proto3" json:"cert_mode,omitempty"`
-	CertDnsProvider         string                 `protobuf:"bytes,64,opt,name=cert_dns_provider,json=certDnsProvider,proto3" json:"cert_dns_provider,omitempty"`
-	CertDnsEnv              string                 `protobuf:"bytes,65,opt,name=cert_dns_env,json=certDnsEnv,proto3" json:"cert_dns_env,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Listener identity: the stable key of the listener inside its server, and
+	// its optional administrator-facing name.
+	ListenerKey             string          `protobuf:"bytes,66,opt,name=listener_key,json=listenerKey,proto3" json:"listener_key,omitempty"`
+	ListenerName            string          `protobuf:"bytes,67,opt,name=listener_name,json=listenerName,proto3" json:"listener_name,omitempty"`
+	Type                    string          `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Port                    uint32          `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	Version                 int64           `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Mode                    string          `protobuf:"bytes,4,opt,name=mode,proto3" json:"mode,omitempty"`
+	Enable                  bool            `protobuf:"varint,5,opt,name=enable,proto3" json:"enable,omitempty"`
+	Security                string          `protobuf:"bytes,6,opt,name=security,proto3" json:"security,omitempty"`
+	Network                 string          `protobuf:"bytes,7,opt,name=network,proto3" json:"network,omitempty"`
+	Sni                     string          `protobuf:"bytes,8,opt,name=sni,proto3" json:"sni,omitempty"`
+	Alpn                    []string        `protobuf:"bytes,9,rep,name=alpn,proto3" json:"alpn,omitempty"`
+	AllowInsecure           bool            `protobuf:"varint,10,opt,name=allow_insecure,json=allowInsecure,proto3" json:"allow_insecure,omitempty"`
+	Fingerprint             string          `protobuf:"bytes,11,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`
+	RealityServerAddr       string          `protobuf:"bytes,12,opt,name=reality_server_addr,json=realityServerAddr,proto3" json:"reality_server_addr,omitempty"`
+	RealityServerPort       int64           `protobuf:"varint,13,opt,name=reality_server_port,json=realityServerPort,proto3" json:"reality_server_port,omitempty"`
+	RealityPrivateKey       string          `protobuf:"bytes,14,opt,name=reality_private_key,json=realityPrivateKey,proto3" json:"reality_private_key,omitempty"`
+	RealityPublicKey        string          `protobuf:"bytes,15,opt,name=reality_public_key,json=realityPublicKey,proto3" json:"reality_public_key,omitempty"`
+	RealityShortId          string          `protobuf:"bytes,16,opt,name=reality_short_id,json=realityShortId,proto3" json:"reality_short_id,omitempty"`
+	Transport               string          `protobuf:"bytes,17,opt,name=transport,proto3" json:"transport,omitempty"`
+	Host                    string          `protobuf:"bytes,18,opt,name=host,proto3" json:"host,omitempty"`
+	Path                    string          `protobuf:"bytes,19,opt,name=path,proto3" json:"path,omitempty"`
+	ServiceName             string          `protobuf:"bytes,20,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	Cipher                  string          `protobuf:"bytes,21,opt,name=cipher,proto3" json:"cipher,omitempty"`
+	ServerKey               string          `protobuf:"bytes,22,opt,name=server_key,json=serverKey,proto3" json:"server_key,omitempty"`
+	Plugin                  string          `protobuf:"bytes,23,opt,name=plugin,proto3" json:"plugin,omitempty"`
+	PluginOptions           *structpb.Value `protobuf:"bytes,24,opt,name=plugin_options,json=pluginOptions,proto3" json:"plugin_options,omitempty"`
+	Flow                    string          `protobuf:"bytes,25,opt,name=flow,proto3" json:"flow,omitempty"`
+	Uot                     bool            `protobuf:"varint,26,opt,name=uot,proto3" json:"uot,omitempty"`
+	UotVersion              int64           `protobuf:"varint,27,opt,name=uot_version,json=uotVersion,proto3" json:"uot_version,omitempty"`
+	AcceptProxyProtocol     bool            `protobuf:"varint,28,opt,name=accept_proxy_protocol,json=acceptProxyProtocol,proto3" json:"accept_proxy_protocol,omitempty"`
+	HopPorts                string          `protobuf:"bytes,29,opt,name=hop_ports,json=hopPorts,proto3" json:"hop_ports,omitempty"`
+	HopInterval             int64           `protobuf:"varint,30,opt,name=hop_interval,json=hopInterval,proto3" json:"hop_interval,omitempty"`
+	ObfsPassword            string          `protobuf:"bytes,31,opt,name=obfs_password,json=obfsPassword,proto3" json:"obfs_password,omitempty"`
+	DisableSni              bool            `protobuf:"varint,32,opt,name=disable_sni,json=disableSni,proto3" json:"disable_sni,omitempty"`
+	ReduceRtt               bool            `protobuf:"varint,33,opt,name=reduce_rtt,json=reduceRtt,proto3" json:"reduce_rtt,omitempty"`
+	Heartbeat               int64           `protobuf:"varint,34,opt,name=heartbeat,proto3" json:"heartbeat,omitempty"`
+	UdpRelayMode            string          `protobuf:"bytes,35,opt,name=udp_relay_mode,json=udpRelayMode,proto3" json:"udp_relay_mode,omitempty"`
+	CongestionController    string          `protobuf:"bytes,36,opt,name=congestion_controller,json=congestionController,proto3" json:"congestion_controller,omitempty"`
+	QuicCongestionControl   string          `protobuf:"bytes,37,opt,name=quic_congestion_control,json=quicCongestionControl,proto3" json:"quic_congestion_control,omitempty"`
+	Multiplex               string          `protobuf:"bytes,38,opt,name=multiplex,proto3" json:"multiplex,omitempty"`
+	PaddingScheme           string          `protobuf:"bytes,39,opt,name=padding_scheme,json=paddingScheme,proto3" json:"padding_scheme,omitempty"`
+	TrafficPattern          string          `protobuf:"bytes,40,opt,name=traffic_pattern,json=trafficPattern,proto3" json:"traffic_pattern,omitempty"`
+	UserHintIsMandatory     bool            `protobuf:"varint,41,opt,name=user_hint_is_mandatory,json=userHintIsMandatory,proto3" json:"user_hint_is_mandatory,omitempty"`
+	UpMbps                  int64           `protobuf:"varint,42,opt,name=up_mbps,json=upMbps,proto3" json:"up_mbps,omitempty"`
+	DownMbps                int64           `protobuf:"varint,43,opt,name=down_mbps,json=downMbps,proto3" json:"down_mbps,omitempty"`
+	Obfs                    string          `protobuf:"bytes,44,opt,name=obfs,proto3" json:"obfs,omitempty"`
+	SsrProtocol             string          `protobuf:"bytes,45,opt,name=ssr_protocol,json=ssrProtocol,proto3" json:"ssr_protocol,omitempty"`
+	ProtocolParam           string          `protobuf:"bytes,46,opt,name=protocol_param,json=protocolParam,proto3" json:"protocol_param,omitempty"`
+	ObfsParam               string          `protobuf:"bytes,47,opt,name=obfs_param,json=obfsParam,proto3" json:"obfs_param,omitempty"`
+	ObfsHost                string          `protobuf:"bytes,48,opt,name=obfs_host,json=obfsHost,proto3" json:"obfs_host,omitempty"`
+	ObfsPath                string          `protobuf:"bytes,49,opt,name=obfs_path,json=obfsPath,proto3" json:"obfs_path,omitempty"`
+	XhttpMode               string          `protobuf:"bytes,50,opt,name=xhttp_mode,json=xhttpMode,proto3" json:"xhttp_mode,omitempty"`
+	XhttpExtra              string          `protobuf:"bytes,51,opt,name=xhttp_extra,json=xhttpExtra,proto3" json:"xhttp_extra,omitempty"`
+	Encryption              string          `protobuf:"bytes,52,opt,name=encryption,proto3" json:"encryption,omitempty"`
+	EncryptionMode          string          `protobuf:"bytes,53,opt,name=encryption_mode,json=encryptionMode,proto3" json:"encryption_mode,omitempty"`
+	EncryptionRtt           string          `protobuf:"bytes,54,opt,name=encryption_rtt,json=encryptionRtt,proto3" json:"encryption_rtt,omitempty"`
+	EncryptionTicket        string          `protobuf:"bytes,55,opt,name=encryption_ticket,json=encryptionTicket,proto3" json:"encryption_ticket,omitempty"`
+	EncryptionServerPadding string          `protobuf:"bytes,56,opt,name=encryption_server_padding,json=encryptionServerPadding,proto3" json:"encryption_server_padding,omitempty"`
+	EncryptionPrivateKey    string          `protobuf:"bytes,57,opt,name=encryption_private_key,json=encryptionPrivateKey,proto3" json:"encryption_private_key,omitempty"`
+	EncryptionClientPadding string          `protobuf:"bytes,58,opt,name=encryption_client_padding,json=encryptionClientPadding,proto3" json:"encryption_client_padding,omitempty"`
+	EncryptionPassword      string          `protobuf:"bytes,59,opt,name=encryption_password,json=encryptionPassword,proto3" json:"encryption_password,omitempty"`
+	EchEnable               bool            `protobuf:"varint,60,opt,name=ech_enable,json=echEnable,proto3" json:"ech_enable,omitempty"`
+	EchServerName           string          `protobuf:"bytes,61,opt,name=ech_server_name,json=echServerName,proto3" json:"ech_server_name,omitempty"`
+	Ratio                   float64         `protobuf:"fixed64,62,opt,name=ratio,proto3" json:"ratio,omitempty"`
+	CertMode                string          `protobuf:"bytes,63,opt,name=cert_mode,json=certMode,proto3" json:"cert_mode,omitempty"`
+	CertDnsProvider         string          `protobuf:"bytes,64,opt,name=cert_dns_provider,json=certDnsProvider,proto3" json:"cert_dns_provider,omitempty"`
+	CertDnsEnv              string          `protobuf:"bytes,65,opt,name=cert_dns_env,json=certDnsEnv,proto3" json:"cert_dns_env,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -1228,6 +1232,20 @@ func (x *ServerProtocol) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ServerProtocol.ProtoReflect.Descriptor instead.
 func (*ServerProtocol) Descriptor() ([]byte, []int) {
 	return file_api_server_v1_server_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ServerProtocol) GetListenerKey() string {
+	if x != nil {
+		return x.ListenerKey
+	}
+	return ""
+}
+
+func (x *ServerProtocol) GetListenerName() string {
+	if x != nil {
+		return x.ListenerName
+	}
+	return ""
 }
 
 func (x *ServerProtocol) GetType() string {
@@ -2230,8 +2248,10 @@ const file_api_server_v1_server_proto_rawDesc = "" +
 	"\bspider_x\x18& \x01(\tR\aspiderX\x12\x1a\n" +
 	"\bsettings\x18' \x01(\tR\bsettings\x12'\n" +
 	"\x0fstream_settings\x18( \x01(\tR\x0estreamSettings\x12\x14\n" +
-	"\x05rules\x18) \x03(\tR\x05rules\"\xe7\x11\n" +
-	"\x0eServerProtocol\x12\x12\n" +
+	"\x05rules\x18) \x03(\tR\x05rules\"\xaf\x12\n" +
+	"\x0eServerProtocol\x12!\n" +
+	"\flistener_key\x18B \x01(\tR\vlistenerKey\x12#\n" +
+	"\rlistener_name\x18C \x01(\tR\flistenerName\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04port\x18\x02 \x01(\rR\x04port\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\x03R\aversion\x12\x12\n" +

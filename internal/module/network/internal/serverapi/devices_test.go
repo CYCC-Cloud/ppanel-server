@@ -20,7 +20,7 @@ func deviceTestService(t *testing.T, limit int64) (*Service, *redis.Client) {
 	deps.Online = &onlineRecorder{}
 	data, _ := json.Marshal(dto.GetServerUserListResponse{Users: []dto.ServerUser{{Id: 21, UUID: "user-21", DeviceLimit: limit}}})
 	for _, id := range []int64{4, 5} {
-		if err := client.Set(t.Context(), serverUserListCacheKey(id, "vless"), data, time.Hour).Err(); err != nil {
+		if err := client.Set(t.Context(), serverProtocolUserListCacheKey(id, "vless"), data, time.Hour).Err(); err != nil {
 			t.Fatal(err)
 		}
 	}

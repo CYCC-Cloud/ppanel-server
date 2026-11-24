@@ -140,6 +140,10 @@ message Outbound {
 // protocol type identifies which fields are consumed by a node runtime; a flat
 // model matches the established PPanel and Star-Node integration contract.
 message ServerProtocol {
+  // Listener identity: the stable key of the listener inside its server, and
+  // its optional administrator-facing name.
+  string listener_key = 66;
+  string listener_name = 67;
   string type = 1;
   uint32 port = 2;
   int64 version = 3;

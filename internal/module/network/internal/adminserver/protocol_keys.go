@@ -33,14 +33,18 @@ type realityProtocolKey struct {
 	shortID    string
 }
 
-func protocolLookup(protocols []node.Protocol) map[string]node.Protocol {
+// Every lookup below is keyed by listener key rather than protocol type: a
+// server may run several listeners of the same type, and each one owns its own
+// credentials. Keying by type would hand one listener's server key or REALITY
+// key pair to its sibling on the next update.
+
+func listenerLookup(protocols []node.Protocol) map[string]node.Protocol {
 	lookup := make(map[string]node.Protocol, len(protocols))
 	for _, protocol := range protocols {
-		protocolType := normalizedProtocolType(protocol.Type)
-		if protocolType == "" {
+		if protocol.ListenerKey == "" {
 			continue
 		}
-		lookup[protocolType] = protocol
+		lookup[protocol.ListenerKey] = protocol
 	}
 	return lookup
 }
@@ -107,14 +111,18 @@ func protocolJSONMap(protocol node.Protocol) (map[string]json.RawMessage, error)
 	return values, nil
 }
 
+// protocolKeyLookup collects the server keys of listeners whose protocol
+// generates one, so an update that omits the key keeps the listener's own.
 func protocolKeyLookup(protocols []node.Protocol) map[string]string {
 	keys := make(map[string]string, len(protocols))
 	for _, protocol := range protocols {
-		protocolType := generatedKeyProtocolType(protocol.Type)
-		if protocolType == "" || strings.TrimSpace(protocol.ServerKey) == "" {
+		if protocol.ListenerKey == "" || generatedKeyProtocolType(protocol.Type) == "" {
 			continue
 		}
-		keys[protocolType] = protocol.ServerKey
+		if strings.TrimSpace(protocol.ServerKey) == "" {
+			continue
+		}
+		keys[protocol.ListenerKey] = protocol.ServerKey
 	}
 	return keys
 }
@@ -122,21 +130,19 @@ func protocolKeyLookup(protocols []node.Protocol) map[string]string {
 func serverKeyLookup(protocols []node.Protocol) map[string]string {
 	keys := make(map[string]string, len(protocols))
 	for _, protocol := range protocols {
-		protocolType := normalizedProtocolType(protocol.Type)
-		if protocolType == "" || strings.TrimSpace(protocol.ServerKey) == "" {
+		if protocol.ListenerKey == "" || strings.TrimSpace(protocol.ServerKey) == "" {
 			continue
 		}
-		keys[protocolType] = protocol.ServerKey
+		keys[protocol.ListenerKey] = protocol.ServerKey
 	}
 	return keys
 }
 
 func ensureGeneratedProtocolKey(protocol *node.Protocol, existing map[string]string) {
-	protocolType := generatedKeyProtocolType(protocol.Type)
-	if protocolType == "" || strings.TrimSpace(protocol.ServerKey) != "" {
+	if generatedKeyProtocolType(protocol.Type) == "" || strings.TrimSpace(protocol.ServerKey) != "" {
 		return
 	}
-	if key := strings.TrimSpace(existing[protocolType]); key != "" {
+	if key := strings.TrimSpace(existing[protocol.ListenerKey]); key != "" {
 		protocol.ServerKey = key
 		return
 	}
@@ -152,7 +158,7 @@ func ensureShadowsocks2022ServerKey(protocol *node.Protocol, existing map[string
 		length = 16
 	}
 	if strings.TrimSpace(protocol.ServerKey) == "" {
-		if key := strings.TrimSpace(existing["shadowsocks"]); len(key) == length {
+		if key := strings.TrimSpace(existing[protocol.ListenerKey]); len(key) == length {
 			protocol.ServerKey = key
 			return
 		}
@@ -168,16 +174,15 @@ func realityProtocolKeyLookup(protocols []node.Protocol) map[string]realityProto
 		if strings.ToLower(strings.TrimSpace(protocol.Security)) != "reality" {
 			continue
 		}
-		protocolType := normalizedProtocolType(protocol.Type)
 		key := realityProtocolKey{
 			privateKey: strings.TrimSpace(protocol.RealityPrivateKey),
 			publicKey:  strings.TrimSpace(protocol.RealityPublicKey),
 			shortID:    strings.TrimSpace(protocol.RealityShortId),
 		}
-		if protocolType == "" || !key.complete() {
+		if protocol.ListenerKey == "" || !key.complete() {
 			continue
 		}
-		keys[protocolType] = key
+		keys[protocol.ListenerKey] = key
 	}
 	return keys
 }
@@ -194,7 +199,7 @@ func ensureRealityProtocolKey(protocol *node.Protocol, existing map[string]reali
 	if key.complete() {
 		return nil
 	}
-	if oldKey, ok := existing[normalizedProtocolType(protocol.Type)]; ok && oldKey.complete() {
+	if oldKey, ok := existing[protocol.ListenerKey]; ok && oldKey.complete() {
 		protocol.RealityPrivateKey = oldKey.privateKey
 		protocol.RealityPublicKey = oldKey.publicKey
 		protocol.RealityShortId = oldKey.shortID

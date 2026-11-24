@@ -22,16 +22,22 @@ type NodeRepo interface {
 	SaveServerConfigOverride(ctx context.Context, data *node.ServerConfigOverride) error
 	DeleteServerConfigOverride(ctx context.Context, serverId int64) error
 	QueryServerList(ctx context.Context, ids []int64) (servers []*node.Server, err error)
+	// QueryAllServers lists every server. It backs the listener-identity
+	// upgrade, which has to inspect every stored protocol configuration.
+	QueryAllServers(ctx context.Context) (servers []*node.Server, err error)
 	// node
 	InsertNode(ctx context.Context, data *node.Node) error
 	FindOneNode(ctx context.Context, id int64) (*node.Node, error)
 	UpdateNode(ctx context.Context, data *node.Node) error
 	DeleteNode(ctx context.Context, id int64) error
+	// UpdateNodeListenerKey writes only the listener binding, bypassing the
+	// full-row update hooks that reorder node sort values.
+	UpdateNodeListenerKey(ctx context.Context, id int64, listenerKey string) error
 	// cache
 	StatusCache(ctx context.Context, serverId int64) (node.Status, error)
 	UpdateStatusCache(ctx context.Context, serverId int64, status *node.Status) error
-	OnlineUserSubscribe(ctx context.Context, serverId int64, protocol string) (node.OnlineUserSubscribe, error)
-	UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, protocol string, subscribe node.OnlineUserSubscribe) error
+	OnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string) (node.OnlineUserSubscribe, error)
+	UpdateOnlineUserSubscribe(ctx context.Context, serverId int64, listenerKey string, subscribe node.OnlineUserSubscribe) error
 	OnlineUserSubscribeGlobal(ctx context.Context) (int64, error)
 	UpdateOnlineUserSubscribeGlobal(ctx context.Context, subscribe node.OnlineUserSubscribe) error
 	// query

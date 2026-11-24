@@ -34,7 +34,7 @@ func (s *nowhereScopeStore) ServableSubscriptionsByNodeScope(context.Context, []
 func newNowhereScope(t *testing.T) (Deps, *nowhereScopeStore, *redis.Client) {
 	t.Helper()
 	deps, base, client := newScopeDeps(t)
-	base.server.Protocols = `[{"type":"nowhere","version":1,"enable":true,"port":443,"security":"tls","sni":"nw.example","cert_mode":"self","alpn":["now/1"]}]`
+	base.server.Protocols = `[{"listener_key":"listener-nowhere","type":"nowhere","version":1,"enable":true,"port":443,"security":"tls","sni":"nw.example","cert_mode":"self","alpn":["now/1"]},{"listener_key":"listener-vless","type":"vless","enable":true,"port":8443}]`
 	store := &nowhereScopeStore{scopeStore: base, served: []subscription.ServedSubscription{{Subscription: &usersub.Subscribe{Id: 1, UserId: 100, UUID: nw3SubscriptionUUID}, Plan: &subscribe.Subscribe{Id: 7, SpeedLimit: 20, DeviceLimit: 3}}}}
 	store.placeholderOwner = store.served[0].Subscription
 	deps.Overrides = store
@@ -104,7 +104,7 @@ func TestNowhereRejectsInvalidCredentialWithoutCachingOrLeakingIt(t *testing.T) 
 	if err == nil || strings.Contains(err.Error(), store.served[0].Subscription.UUID) {
 		t.Fatalf("invalid credential error=%v", err)
 	}
-	if client.Exists(t.Context(), serverUserListCacheKey(4, Nowhere)).Val() != 0 {
+	if client.Exists(t.Context(), serverUserListCacheKey(4, "listener-nowhere")).Val() != 0 {
 		t.Fatal("cached invalid credential")
 	}
 }
