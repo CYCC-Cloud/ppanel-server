@@ -311,6 +311,7 @@ func New(deps Deps) Service {
 			Plans:       deps.Plans,
 			UserSubs:    deps.UserSubs,
 			Nodes:       deps.Nodes,
+			Loads:       deps.Nodes,
 			IsTrialPlan: deps.IsTrialPlan,
 		}),
 		nodeAccess: nodeaccess.NewService(nodeaccess.Deps{

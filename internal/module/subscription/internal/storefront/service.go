@@ -15,12 +15,19 @@ type NodeLister interface {
 	ListEnabledNodesByScope(ctx context.Context, nodeIDs []int64, tags []string) ([]*node.Node, error)
 }
 
+// LoadReader is the network read port (the network facade) grading the load
+// of the servers the listed nodes belong to.
+type LoadReader interface {
+	ServerLoads(ctx context.Context, servers []*node.Server) (map[int64]node.ServerLoad, error)
+}
+
 // Deps declares the subdomain's dependencies; the module facade forwards
 // them from the composition root.
 type Deps struct {
 	Plans    repository.SubscribeRepo
 	UserSubs repository.UserSubscriptionRepo
 	Nodes    NodeLister
+	Loads    LoadReader
 	// IsTrialPlan reports whether the plan is the currently configured trial
 	// plan; the registration config is runtime-mutable.
 	IsTrialPlan func(planID int64) bool

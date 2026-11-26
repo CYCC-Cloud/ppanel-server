@@ -23,6 +23,7 @@ type Server struct {
 	LastReportedAt *time.Time `gorm:"comment:Last Reported Time"`
 	CreatedAt      time.Time  `gorm:"<-:create;comment:Creation Time"`
 	UpdatedAt      time.Time  `gorm:"comment:Update Time"`
+	Capacity       int64      `gorm:"type:bigint;not null;default:0;comment:Display capacity in users"` // users the server is meant to hold, for display only; 0 falls back to the node settings' default
 }
 
 func (*Server) TableName() string {

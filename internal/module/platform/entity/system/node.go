@@ -28,6 +28,7 @@ func ParseNodeConfig(rows []*System) (config.NodeConfig, error) {
 		NodePullInterval:       stored.NodePullInterval,
 		NodePushInterval:       stored.NodePushInterval,
 		TrafficReportThreshold: stored.TrafficReportThreshold,
+		DefaultServerCapacity:  stored.DefaultServerCapacity,
 		IPStrategy:             stored.IPStrategy,
 	}
 	if stored.DNS != "" {

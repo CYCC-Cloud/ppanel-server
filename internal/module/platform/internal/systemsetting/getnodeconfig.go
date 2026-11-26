@@ -45,6 +45,7 @@ func nodeConfigView(c config.NodeConfig) *dto.NodeConfig {
 		NodePullInterval:       c.NodePullInterval,
 		NodePushInterval:       c.NodePushInterval,
 		TrafficReportThreshold: c.TrafficReportThreshold,
+		DefaultServerCapacity:  c.DefaultServerCapacity,
 		IPStrategy:             c.IPStrategy,
 		Block:                  c.Block,
 	}

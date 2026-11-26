@@ -19,6 +19,7 @@ func (s *Service) CreateServer(ctx context.Context, req *dto.CreateServerRequest
 	log := logger.WithContext(ctx)
 	data := node.Server{
 		Name:      req.Name,
+		Capacity:  req.Capacity,
 		Country:   req.Country,
 		City:      req.City,
 		Address:   req.Address,

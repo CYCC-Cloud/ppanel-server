@@ -14,6 +14,7 @@ import (
 	"github.com/perfect-panel/backend/internal/module/network/internal/listeneridentity"
 	"github.com/perfect-panel/backend/internal/module/network/internal/repo"
 	"github.com/perfect-panel/backend/internal/module/network/internal/serverapi"
+	"github.com/perfect-panel/backend/internal/module/network/internal/serverload"
 	"github.com/perfect-panel/backend/internal/module/network/internal/trafficstat"
 	"github.com/perfect-panel/backend/internal/module/subscription"
 	"github.com/perfect-panel/backend/internal/repository"
@@ -173,6 +174,14 @@ func New(deps Deps) Service {
 		}),
 		store:     deps.Store,
 		listeners: listeneridentity.NewService(listeneridentity.Deps{Store: deps.Store}),
+		loads: serverload.NewService(serverload.Deps{
+			Redis:  deps.Redis,
+			Status: nodes,
+			Online: nodes,
+			DefaultCapacity: func() int64 {
+				return deps.Config().Node.DefaultServerCapacity
+			},
+		}),
 	}
 }
 
@@ -184,6 +193,7 @@ type service struct {
 	stats     *trafficstat.Service
 	store     Store
 	listeners *listeneridentity.Service
+	loads     *serverload.Service
 }
 
 func (s *service) CreateServer(ctx context.Context, req *dto.CreateServerRequest) error {

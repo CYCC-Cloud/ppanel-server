@@ -100,6 +100,7 @@ func serverDTO(datum *node.Server) dto.Server {
 	server := dto.Server{
 		Id:        datum.Id,
 		Name:      datum.Name,
+		Capacity:  datum.Capacity,
 		Country:   datum.Country,
 		City:      datum.City,
 		Address:   datum.Address,
@@ -179,17 +180,12 @@ func onlineUsers(online map[int64][]dto.ServerOnlineIP, subscriptions map[int64]
 	return result
 }
 
-// reportStatus rates a server by its last report: online within three
-// minutes, a warning up to five, offline after that or without any.
+// reportStatus is the admin list's label of the shared rule: a degraded
+// server still reads "warning" there.
 func reportStatus(last *time.Time) string {
-	if last == nil {
-		return "offline"
-	}
-	if time.Since(*last) > time.Minute*5 {
-		return "offline"
-	}
-	if time.Since(*last) > time.Minute*3 {
+	status := node.ReportStatus(last)
+	if status == node.ServerStatusDegraded {
 		return "warning"
 	}
-	return "online"
+	return status
 }

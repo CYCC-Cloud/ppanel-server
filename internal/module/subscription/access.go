@@ -54,11 +54,13 @@ type ServedSubscription = nodeaccess.Served
 
 // NodeReader and TrafficLogReader are the network read ports (the network
 // facade satisfies them): the nodes delivery, the storefront and the
-// template preview list, and the admin view of a subscription's traffic.
+// template preview list, the servers' load for the storefront, and the admin
+// view of a subscription's traffic.
 type (
 	NodeReader interface {
 		delivery.NodeLister
 		storefront.NodeLister
+		storefront.LoadReader
 		application.NodeLister
 	}
 	TrafficLogReader = usersub.TrafficLogReader

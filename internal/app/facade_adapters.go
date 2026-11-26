@@ -30,6 +30,10 @@ func (r subscriptionNetworkReads) SubscriptionTrafficLogs(ctx context.Context, u
 	return r.srv.Network.SubscriptionTrafficLogs(ctx, userID, subscribeID, page, size)
 }
 
+func (r subscriptionNetworkReads) ServerLoads(ctx context.Context, servers []*node.Server) (map[int64]node.ServerLoad, error) {
+	return r.srv.Network.ServerLoads(ctx, servers)
+}
+
 // identityServerCaches serves the identity module's node-cache invalidation
 // for deleted and disabled accounts from the network facade.
 type identityServerCaches struct{ srv *Application }

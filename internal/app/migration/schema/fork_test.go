@@ -191,6 +191,9 @@ func assertForkSchema(t *testing.T, db *gorm.DB, driver string) {
 	if !db.Migrator().HasColumn("nodes", "listener_key") {
 		t.Fatal("nodes.listener_key is missing")
 	}
+	if !db.Migrator().HasColumn("servers", "capacity") {
+		t.Fatal("servers.capacity is missing")
+	}
 	assertMigrationVersion(t, db, "schema_migrations", latestVersion(t, migrationNames(t, "database/"+driver, "up")))
 	assertMigrationVersion(t, db, forkMigrationsTable, latestVersion(t, forkMigrationVersions(t, driver, "up")))
 }

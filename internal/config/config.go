@@ -249,6 +249,7 @@ type NodeConfig struct {
 	DNS                    []NodeDNS      `yaml:"DNS"`
 	Block                  []string       `yaml:"Block" `
 	Outbound               []NodeOutbound `yaml:"Outbound"`
+	DefaultServerCapacity  int64          `yaml:"DefaultServerCapacity" default:"0"` // display capacity in users; 0 leaves users out of the grade
 }
 
 func (n *NodeConfig) Marshal() ([]byte, error) {
@@ -448,6 +449,7 @@ type NodeDBConfig struct {
 	NodePullInterval       int64
 	NodePushInterval       int64
 	TrafficReportThreshold int64
+	DefaultServerCapacity  int64
 	IPStrategy             string
 	DNS                    string
 	Block                  string
