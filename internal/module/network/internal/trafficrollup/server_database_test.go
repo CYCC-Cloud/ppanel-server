@@ -85,16 +85,16 @@ func assertServerRollup(t *testing.T, db *gorm.DB) {
 		t.Fatalf("daily rows = %+v", daily)
 	}
 
-	hours, err := service.UserHistory(context.Background(), 1, 7, GranularityHour,
-		time.Date(2026, 11, 26, 9, 0, 0, 0, time.UTC), time.Date(2026, 11, 26, 12, 0, 0, 0, time.UTC))
+	hours, _, err := service.UserHistory(context.Background(), 1, 7, GranularityHour,
+		time.Date(2026, 11, 26, 9, 0, 0, 0, time.UTC), time.Date(2026, 11, 26, 12, 0, 0, 0, time.UTC), "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(hours) != 3 || hours[0].Upload != 0 || hours[1].Upload != 101 || hours[2].Upload != 0 {
 		t.Fatalf("hour series = %+v", hours)
 	}
-	days, err := service.UserHistory(context.Background(), 2, 8, GranularityDay,
-		time.Date(2026, 11, 25, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 27, 0, 0, 0, 0, time.UTC))
+	days, _, err := service.UserHistory(context.Background(), 2, 8, GranularityDay,
+		time.Date(2026, 11, 25, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 27, 0, 0, 0, 0, time.UTC), "")
 	if err != nil {
 		t.Fatal(err)
 	}

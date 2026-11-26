@@ -214,8 +214,8 @@ func TestFallBackDayKeepsEveryHour(t *testing.T) {
 
 	// The history series covers the same 24 buckets and totals the same day.
 	service := NewService(Deps{Rollup: rollup})
-	points, err := service.UserHistory(context.Background(), 1, 7, GranularityHour,
-		inZone(t, "Europe/Paris", 10, 25, 0, 0), inZone(t, "Europe/Paris", 10, 26, 0, 0))
+	points, _, err := service.UserHistory(context.Background(), 1, 7, GranularityHour,
+		inZone(t, "Europe/Paris", 10, 25, 0, 0), inZone(t, "Europe/Paris", 10, 26, 0, 0), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,8 +293,8 @@ func TestMonthSeriesZeroFillsAndSumsDays(t *testing.T) {
 		{Day: "2026-03-02", Upload: 7, Download: 3},
 	}}
 	service := NewService(Deps{Rollup: rollup})
-	points, err := service.UserHistory(context.Background(), 1, 7, GranularityMonth,
-		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC))
+	points, _, err := service.UserHistory(context.Background(), 1, 7, GranularityMonth,
+		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,8 +311,8 @@ func TestMonthSeriesZeroFillsAndSumsDays(t *testing.T) {
 		t.Fatalf("March = %+v", points[2])
 	}
 
-	days, err := service.UserHistory(context.Background(), 1, 7, GranularityDay,
-		time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC), time.Date(2026, 2, 2, 0, 0, 0, 0, time.UTC))
+	days, _, err := service.UserHistory(context.Background(), 1, 7, GranularityDay,
+		time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC), time.Date(2026, 2, 2, 0, 0, 0, 0, time.UTC), "")
 	if err != nil {
 		t.Fatal(err)
 	}

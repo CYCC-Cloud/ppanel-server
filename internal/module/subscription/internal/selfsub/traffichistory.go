@@ -21,8 +21,8 @@ func (s *Service) UserTrafficHistory(ctx context.Context, req *dto.TrafficHistor
 	if err != nil {
 		return nil, err
 	}
-	points, err := s.deps.Traffic.UserTrafficHistory(ctx, sub.Id, sub.UserId, req.Granularity,
-		time.Unix(req.Start, 0), time.Unix(req.End, 0))
+	points, zone, err := s.deps.Traffic.UserTrafficHistory(ctx, sub.Id, sub.UserId, req.Granularity,
+		time.Unix(req.Start, 0), time.Unix(req.End, 0), req.Timezone)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (s *Service) UserTrafficHistory(ctx context.Context, req *dto.TrafficHistor
 			Download: point.Download,
 		})
 	}
-	return &dto.TrafficHistoryResponse{Timezone: timeutil.LocationName(), List: list}, nil
+	return &dto.TrafficHistoryResponse{Timezone: zone, List: list}, nil
 }
 
 // UserTrafficServers returns the owner's traffic of one subscription per
