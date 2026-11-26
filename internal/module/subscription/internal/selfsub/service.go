@@ -63,7 +63,7 @@ type OrderReader interface {
 // TrafficHistoryReader is the network port of the user traffic history; the
 // network facade provides it.
 type TrafficHistoryReader interface {
-	UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]trafficEntity.TrafficPoint, error)
+	UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time, tz string) ([]trafficEntity.TrafficPoint, string, error)
 	UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]trafficEntity.ServerTraffic, error)
 }
 

@@ -10866,6 +10866,12 @@
                         "required": true
                     },
                     {
+                        "maxLength": 64,
+                        "type": "string",
+                        "name": "tz",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "name": "user_subscribe_id",
                         "in": "query",

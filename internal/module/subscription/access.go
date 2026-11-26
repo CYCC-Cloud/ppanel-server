@@ -67,8 +67,9 @@ type (
 	TrafficLogReader     = usersub.TrafficLogReader
 	TrafficHistoryReader interface {
 		// UserTrafficHistory returns the subscription's zero-filled series
-		// at the given granularity over [start, end).
-		UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]trafficEntity.TrafficPoint, error)
+		// at the given granularity over [start, end), and the time zone its
+		// bucket starts are in.
+		UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time, tz string) ([]trafficEntity.TrafficPoint, string, error)
 		// UserTrafficServers returns the subscription's traffic per server
 		// over [start, end), largest first.
 		UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]trafficEntity.ServerTraffic, error)

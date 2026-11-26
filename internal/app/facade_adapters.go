@@ -31,8 +31,8 @@ func (r subscriptionNetworkReads) SubscriptionTrafficLogs(ctx context.Context, u
 	return r.srv.Network.SubscriptionTrafficLogs(ctx, userID, subscribeID, page, size)
 }
 
-func (r subscriptionNetworkReads) UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]traffic.TrafficPoint, error) {
-	return r.srv.Network.UserTrafficHistory(ctx, userSubscribeID, userID, granularity, start, end)
+func (r subscriptionNetworkReads) UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time, tz string) ([]traffic.TrafficPoint, string, error) {
+	return r.srv.Network.UserTrafficHistory(ctx, userSubscribeID, userID, granularity, start, end, tz)
 }
 
 func (r subscriptionNetworkReads) UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]traffic.ServerTraffic, error) {

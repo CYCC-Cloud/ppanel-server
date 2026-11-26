@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strings"
 	"testing"
 
 	dto "github.com/perfect-panel/backend/internal/module/subscription/contract"
@@ -15,6 +16,11 @@ func TestTrafficRequestsValidateTheirQuery(t *testing.T) {
 	if err := validation.Validate(&validHistory); err != nil {
 		t.Fatalf("a valid history request was rejected: %v", err)
 	}
+	zonedHistory := validHistory
+	zonedHistory.Timezone = "Europe/London"
+	if err := validation.Validate(&zonedHistory); err != nil {
+		t.Fatalf("a request with tz was rejected: %v", err)
+	}
 	for name, request := range map[string]any{
 		"missing subscription": dto.TrafficHistoryRequest{Granularity: "hour", Start: 1, End: 2},
 		"missing granularity":  dto.TrafficHistoryRequest{UserSubscribeId: 9, Start: 1, End: 2},
@@ -22,6 +28,9 @@ func TestTrafficRequestsValidateTheirQuery(t *testing.T) {
 		"missing start":        dto.TrafficHistoryRequest{UserSubscribeId: 9, Granularity: "hour", End: 2},
 		"empty range":          dto.TrafficHistoryRequest{UserSubscribeId: 9, Granularity: "hour", Start: 2, End: 2},
 		"reversed range":       dto.TrafficHistoryRequest{UserSubscribeId: 9, Granularity: "hour", Start: 3, End: 2},
+		"overlong tz": dto.TrafficHistoryRequest{
+			UserSubscribeId: 9, Granularity: "day", Start: 1, End: 2, Timezone: strings.Repeat("a", 65),
+		},
 		"negative subscription": dto.TrafficHistoryRequest{
 			UserSubscribeId: -1, Granularity: "minute", Start: 1, End: 2,
 		},

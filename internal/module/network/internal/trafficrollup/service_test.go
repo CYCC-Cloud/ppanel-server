@@ -263,7 +263,7 @@ func TestHistoryAndServersReadTheRollup(t *testing.T) {
 
 	start := at(t, "2026-11-26T09:00:00Z")
 	end := at(t, "2026-11-26T12:00:00Z")
-	points, err := service.UserHistory(context.Background(), 1, 7, GranularityHour, start, end)
+	points, _, err := service.UserHistory(context.Background(), 1, 7, GranularityHour, start, end, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestHistoryValidatesItsRange(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := service.UserHistory(ctx, 1, 7, tc.granularity, tc.start, tc.end); err == nil {
+			if _, _, err := service.UserHistory(ctx, 1, 7, tc.granularity, tc.start, tc.end, ""); err == nil {
 				t.Fatal("the range was accepted")
 			}
 		})
@@ -329,7 +329,7 @@ func TestHistoryValidatesItsRange(t *testing.T) {
 	}
 
 	// A minute series zero-fills its minutes from the raw log.
-	if _, err := service.UserHistory(ctx, 1, 7, GranularityMinute, start, start.Add(10*time.Minute)); err != nil {
+	if _, _, err := service.UserHistory(ctx, 1, 7, GranularityMinute, start, start.Add(10*time.Minute), ""); err != nil {
 		t.Fatal(err)
 	}
 }

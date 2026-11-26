@@ -19,20 +19,24 @@ import (
 )
 
 // storedTraffic answers the traffic history port from memory and records the
-// range and granularity it was asked for.
+// range, granularity and zone it was asked for.
 type storedTraffic struct {
 	points  []trafficEntity.TrafficPoint
 	servers []trafficEntity.ServerTraffic
 	owned   int64
 	user    int64
 	asked   string
+	zone    string
 }
 
 var _ TrafficHistoryReader = (*storedTraffic)(nil)
 
-func (s *storedTraffic) UserTrafficHistory(_ context.Context, userSubscribeID, userID int64, granularity string, _, _ time.Time) ([]trafficEntity.TrafficPoint, error) {
-	s.owned, s.user, s.asked = userSubscribeID, userID, granularity
-	return s.points, nil
+func (s *storedTraffic) UserTrafficHistory(_ context.Context, userSubscribeID, userID int64, granularity string, _, _ time.Time, tz string) ([]trafficEntity.TrafficPoint, string, error) {
+	s.owned, s.user, s.asked, s.zone = userSubscribeID, userID, granularity, tz
+	if tz == "" {
+		tz = timeutil.LocationName()
+	}
+	return s.points, tz, nil
 }
 
 func (s *storedTraffic) UserTrafficServers(_ context.Context, userSubscribeID, userID int64, _, _ time.Time) ([]trafficEntity.ServerTraffic, error) {
@@ -103,6 +107,24 @@ func TestUserTrafficHistoryReadsTheOwnersSubscription(t *testing.T) {
 	if len(resp.List) != 2 || resp.List[0].Time != start.Unix() || resp.List[0].Upload != 10 ||
 		resp.List[1].Time != start.Add(time.Hour).Unix() || resp.List[1].Download != 0 {
 		t.Fatalf("history = %+v", resp.List)
+	}
+	if traffic.zone != "" {
+		t.Fatalf("a request without tz asked for zone %q", traffic.zone)
+	}
+
+	// A requested zone reaches the port and comes back to the client.
+	zoned, err := f.svc.UserTrafficHistory(as(100), &dto.TrafficHistoryRequest{
+		UserSubscribeId: sub.Id,
+		Granularity:     "day",
+		Start:           start.Unix(),
+		End:             start.AddDate(0, 0, 1).Unix(),
+		Timezone:        "Europe/London",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if traffic.zone != "Europe/London" || zoned.Timezone != "Europe/London" {
+		t.Fatalf("asked for zone %q, answered %q", traffic.zone, zoned.Timezone)
 	}
 }
 

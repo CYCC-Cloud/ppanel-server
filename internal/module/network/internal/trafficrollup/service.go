@@ -14,6 +14,7 @@ package trafficrollup
 import (
 	"context"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/perfect-panel/backend/internal/config"
@@ -48,6 +49,9 @@ const (
 	maxDaySpan    = 366 * 24 * time.Hour
 	maxMonthSpan  = 120
 	maxServerSpan = 366 * 24 * time.Hour
+
+	// maxTimeZoneName bounds the tz query parameter.
+	maxTimeZoneName = 64
 )
 
 // Limits is the retention the rollup applies, in days. A zero daily limit
@@ -213,58 +217,184 @@ func (s *Service) applyRetention(ctx context.Context, now time.Time, loc *time.L
 	return nil
 }
 
-// UserHistory returns the zero-filled traffic series of one subscription.
-// The buckets are the local minutes, hours, days or months of
-// [start, end), and the amounts are the ones counted against the
-// subscription's quota.
-func (s *Service) UserHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]traffic.TrafficPoint, error) {
-	loc := timeutil.Location()
-	start, end = start.In(loc), end.In(loc)
+// UserHistory returns the zero-filled traffic series of one subscription and
+// the name of the time zone its bucket starts are in. The buckets are the
+// local minutes, hours, days or months of [start, end), and the amounts are
+// the ones counted against the subscription's quota. A tz other than the
+// application's zone moves the day and month buckets to its local midnights,
+// summed from the hourly table; a range that table no longer covers falls
+// back to the application zone's daily rows, so a response never mixes zones.
+func (s *Service) UserHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time, tz string) ([]traffic.TrafficPoint, string, error) {
+	app := timeutil.Location()
+	zone, name, err := historyZone(tz)
+	if err != nil {
+		return nil, "", err
+	}
+	start, end = start.In(app), end.In(app)
 	if !start.Before(end) {
-		return nil, xerr.Errorf(xerr.InvalidParams, "start must be before end")
+		return nil, "", xerr.Errorf(xerr.InvalidParams, "start must be before end")
 	}
 	switch granularity {
 	case GranularityMinute:
 		if end.Sub(start) > maxMinuteSpan {
-			return nil, xerr.Errorf(xerr.InvalidParams, "the minute series covers at most %d hours", int(maxMinuteSpan/time.Hour))
+			return nil, "", xerr.Errorf(xerr.InvalidParams, "the minute series covers at most %d hours", int(maxMinuteSpan/time.Hour))
 		}
 		from := start.Truncate(time.Minute)
 		rows, err := s.deps.Rollup.TrafficLogPoints(ctx, userSubscribeID, userID, from, end)
 		if err != nil {
-			return nil, xerr.Wrapf(err, xerr.DatabaseQueryError, "read the traffic log minutes")
+			return nil, "", xerr.Wrapf(err, xerr.DatabaseQueryError, "read the traffic log minutes")
 		}
-		return minuteSeries(from, end, rows), nil
+		return minuteSeries(from, end, rows), name, nil
 	case GranularityHour:
 		if end.Sub(start) > maxHourSpan {
-			return nil, xerr.Errorf(xerr.InvalidParams, "the hour series covers at most %d days", int(maxHourSpan/(24*time.Hour)))
+			return nil, "", xerr.Errorf(xerr.InvalidParams, "the hour series covers at most %d days", int(maxHourSpan/(24*time.Hour)))
 		}
-		from := localHourStart(start, loc)
+		from := localHourStart(start, app)
 		rows, err := s.deps.Rollup.HourPoints(ctx, userSubscribeID, userID, from, end)
 		if err != nil {
-			return nil, xerr.Wrapf(err, xerr.DatabaseQueryError, "read the traffic rollup hours")
+			return nil, "", xerr.Wrapf(err, xerr.DatabaseQueryError, "read the traffic rollup hours")
 		}
-		return hourSeries(from, end, rows), nil
+		return hourSeries(from, end, rows), name, nil
 	case GranularityDay, GranularityMonth:
 		if granularity == GranularityDay && end.Sub(start) > maxDaySpan {
-			return nil, xerr.Errorf(xerr.InvalidParams, "the day series covers at most %d days", int(maxDaySpan/(24*time.Hour)))
+			return nil, "", xerr.Errorf(xerr.InvalidParams, "the day series covers at most %d days", int(maxDaySpan/(24*time.Hour)))
 		}
 		if granularity == GranularityMonth && monthsBetween(start, end) > maxMonthSpan {
-			return nil, xerr.Errorf(xerr.InvalidParams, "the month series covers at most %d months", maxMonthSpan)
+			return nil, "", xerr.Errorf(xerr.InvalidParams, "the month series covers at most %d months", maxMonthSpan)
 		}
-		fromDay := start.Format(time.DateOnly)
-		toDay := localDayStart(end.Add(-time.Nanosecond)).AddDate(0, 0, 1).Format(time.DateOnly)
-		rows, err := s.deps.Rollup.DayPoints(ctx, userSubscribeID, userID, fromDay, toDay)
-		if err != nil {
-			return nil, xerr.Wrapf(err, xerr.DatabaseQueryError, "read the traffic rollup days")
+		if name != timeutil.LocationName() {
+			return s.zonedHistory(ctx, userSubscribeID, userID, granularity, start, end, zone, name)
 		}
-		if granularity == GranularityDay {
-			return daySeries(start, end, loc, rows), nil
-		}
-		return monthSeries(start, end, loc, rows), nil
+		return s.appZoneHistory(ctx, userSubscribeID, userID, granularity, start, end)
 	default:
-		return nil, xerr.Errorf(xerr.InvalidParams, "granularity must be one of %s, %s, %s, %s",
+		return nil, "", xerr.Errorf(xerr.InvalidParams, "granularity must be one of %s, %s, %s, %s",
 			GranularityMinute, GranularityHour, GranularityDay, GranularityMonth)
 	}
+}
+
+// appZoneHistory answers a day or month series from the application zone's
+// daily table.
+func (s *Service) appZoneHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]traffic.TrafficPoint, string, error) {
+	loc, name := timeutil.Location(), timeutil.LocationName()
+	start, end = start.In(loc), end.In(loc)
+	fromDay := start.Format(time.DateOnly)
+	toDay := localDayStart(end.Add(-time.Nanosecond)).AddDate(0, 0, 1).Format(time.DateOnly)
+	rows, err := s.deps.Rollup.DayPoints(ctx, userSubscribeID, userID, fromDay, toDay)
+	if err != nil {
+		return nil, "", xerr.Wrapf(err, xerr.DatabaseQueryError, "read the traffic rollup days")
+	}
+	if granularity == GranularityDay {
+		return daySeries(start, end, loc, rows), name, nil
+	}
+	return monthSeries(start, end, loc, rows), name, nil
+}
+
+// zonedHistory answers a day or month series whose buckets are another zone's
+// local days or months, summed from the hourly table. That table's rows start
+// on application hours, so every bucket edge must be one too: a zone offset
+// that is not a whole number of hours (Asia/Kathmandu) would split a row, and
+// is refused rather than approximated.
+func (s *Service) zonedHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time, zone *time.Location, name string) ([]traffic.TrafficPoint, string, error) {
+	var edges []time.Time
+	if granularity == GranularityDay {
+		edges = dayEdges(start, end, zone)
+	} else {
+		edges = monthEdges(start, end, zone)
+	}
+	oldest, ok, err := s.deps.Rollup.OldestHourlyStart(ctx)
+	if err != nil {
+		return nil, "", xerr.Wrapf(err, xerr.DatabaseQueryError, "read the oldest traffic rollup hour")
+	}
+	// Retention prunes the hourly table from the oldest end, so its first
+	// covered bucket decides for the whole range: one response, one zone.
+	if !ok || edges[0].Before(oldest) {
+		return s.appZoneHistory(ctx, userSubscribeID, userID, granularity, start, end)
+	}
+	app := timeutil.Location()
+	// shortcut: a row the application zone's fall-back hour merges spans two
+	// elapsed hours, so a bucket edge inside it is rounded into one of them;
+	// upgrade if the application zone observes DST and a requested zone's
+	// midnight lands in that repeated hour.
+	for _, edge := range edges {
+		if !onAppHour(edge, app) {
+			return nil, "", xerr.Errorf(xerr.InvalidParams,
+				"tz %s is not a whole number of hours from %s, so its %s buckets cannot be summed",
+				name, timeutil.LocationName(), granularity)
+		}
+	}
+	rows, err := s.deps.Rollup.HourPoints(ctx, userSubscribeID, userID, edges[0], edges[len(edges)-1])
+	if err != nil {
+		return nil, "", xerr.Wrapf(err, xerr.DatabaseQueryError, "read the traffic rollup hours")
+	}
+	return bucketSums(edges, rows), name, nil
+}
+
+// historyZone resolves the optional tz parameter. Empty keeps the application
+// zone; LoadLocation reads zone files for path-like names, so those and Local
+// are refused outright.
+func historyZone(tz string) (*time.Location, string, error) {
+	if tz == "" {
+		return timeutil.Location(), timeutil.LocationName(), nil
+	}
+	if tz == "Local" || len(tz) > maxTimeZoneName ||
+		strings.HasPrefix(tz, "/") || strings.Contains(tz, "..") {
+		return nil, "", xerr.Errorf(xerr.InvalidParams, "tz must be an IANA time zone name")
+	}
+	zone, err := time.LoadLocation(tz)
+	if err != nil {
+		return nil, "", xerr.Errorf(xerr.InvalidParams, "tz must be an IANA time zone name")
+	}
+	return zone, tz, nil
+}
+
+// onAppHour reports whether at is a whole application hour, so an hourly row,
+// which starts on one, falls inside a bucket instead of straddling it.
+func onAppHour(at time.Time, app *time.Location) bool {
+	local := at.In(app)
+	return local.Minute() == 0 && local.Second() == 0 && local.Nanosecond() == 0
+}
+
+// dayEdges returns the local day starts of the days starting in [start, end),
+// each followed by the next, so they bound one bucket each.
+func dayEdges(start, end time.Time, loc *time.Location) []time.Time {
+	first := localDayStart(start.In(loc))
+	edges := []time.Time{first}
+	for day := first; day.Before(end); day = nextLocalDay(day) {
+		edges = append(edges, nextLocalDay(day))
+	}
+	return edges
+}
+
+// monthEdges returns the local month starts of the months starting in
+// [start, end), each followed by the next, so they bound one bucket each.
+func monthEdges(start, end time.Time, loc *time.Location) []time.Time {
+	at := start.In(loc)
+	first := time.Date(at.Year(), at.Month(), 1, 0, 0, 0, 0, loc)
+	edges := []time.Time{first}
+	for month := first; month.Before(end); month = month.AddDate(0, 1, 0) {
+		edges = append(edges, month.AddDate(0, 1, 0))
+	}
+	return edges
+}
+
+// bucketSums sums hourly rows into the buckets [edges[i], edges[i+1]). The
+// repository returns the rows oldest first.
+func bucketSums(edges []time.Time, rows []traffic.TrafficPoint) []traffic.TrafficPoint {
+	points := make([]traffic.TrafficPoint, 0, len(edges)-1)
+	next := 0
+	for next < len(rows) && rows[next].Start.Before(edges[0]) {
+		next++
+	}
+	for i := 0; i+1 < len(edges); i++ {
+		var sum [2]int64
+		for next < len(rows) && rows[next].Start.Before(edges[i+1]) {
+			sum[0] += rows[next].Upload
+			sum[1] += rows[next].Download
+			next++
+		}
+		points = append(points, traffic.TrafficPoint{Start: edges[i], Upload: sum[0], Download: sum[1]})
+	}
+	return points
 }
 
 // UserServers returns one subscription's traffic per server over

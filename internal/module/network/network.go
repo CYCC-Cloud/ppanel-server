@@ -69,8 +69,10 @@ type Service interface {
 	// aggregates from the raw traffic log and applies their retention.
 	RunTrafficRollup(ctx context.Context) error
 	// UserTrafficHistory returns one subscription's zero-filled traffic
-	// series at the given granularity.
-	UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]traffic.TrafficPoint, error)
+	// series at the given granularity, and the time zone its bucket starts
+	// are in; tz names another zone for day and month buckets, empty keeps
+	// the application's.
+	UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time, tz string) ([]traffic.TrafficPoint, string, error)
 	// UserTrafficServers returns one subscription's traffic per server,
 	// largest first.
 	UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]traffic.ServerTraffic, error)
@@ -323,8 +325,8 @@ func (s *service) RunTrafficRollup(ctx context.Context) error {
 	return s.rollup.Run(ctx)
 }
 
-func (s *service) UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]traffic.TrafficPoint, error) {
-	return s.rollup.UserHistory(ctx, userSubscribeID, userID, granularity, start, end)
+func (s *service) UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time, tz string) ([]traffic.TrafficPoint, string, error) {
+	return s.rollup.UserHistory(ctx, userSubscribeID, userID, granularity, start, end, tz)
 }
 
 func (s *service) UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]traffic.ServerTraffic, error) {

@@ -1,12 +1,15 @@
 package dto
 
 // TrafficHistoryRequest selects one subscription's traffic history series.
-// Start and End are Unix seconds; the series covers [start, end).
+// Start and End are Unix seconds; the series covers [start, end). Timezone is
+// an optional IANA name: empty keeps the application's zone, and day and month
+// buckets follow it otherwise.
 type TrafficHistoryRequest struct {
 	UserSubscribeId int64  `form:"user_subscribe_id" validate:"required,gt=0"`
 	Granularity     string `form:"granularity" validate:"required,oneof=minute hour day month"`
 	Start           int64  `form:"start" validate:"required,gt=0"`
 	End             int64  `form:"end" validate:"required,gtfield=Start"`
+	Timezone        string `form:"tz" validate:"omitempty,max=64"`
 }
 
 // TrafficHistoryPoint is one bucket of the series: its start in Unix
