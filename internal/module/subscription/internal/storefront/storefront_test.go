@@ -32,11 +32,36 @@ func (p *planNodes) ListEnabledNodesByScope(_ context.Context, nodeIDs []int64, 
 	return p.nodes, nil
 }
 
+// planLoads is a compile-checked LoadReader returning graded loads by server
+// id and counting the calls.
+type planLoads struct {
+	loads   map[int64]node.ServerLoad
+	err     error
+	calls   int
+	servers []*node.Server
+}
+
+var _ LoadReader = (*planLoads)(nil)
+
+func (p *planLoads) ServerLoads(_ context.Context, servers []*node.Server) (map[int64]node.ServerLoad, error) {
+	p.calls++
+	p.servers = servers
+	if p.err != nil {
+		return nil, p.err
+	}
+	return p.loads, nil
+}
+
 func newStorefront(f *subtest.Fixture, nodes NodeLister, trialPlan int64) *Service {
+	return newStorefrontWithLoads(f, nodes, nil, trialPlan)
+}
+
+func newStorefrontWithLoads(f *subtest.Fixture, nodes NodeLister, loads LoadReader, trialPlan int64) *Service {
 	return NewService(Deps{
 		Plans:       f.Store.Subscribe(),
 		UserSubs:    f.Store.UserSubscription(),
 		Nodes:       nodes,
+		Loads:       loads,
 		IsTrialPlan: func(planID int64) bool { return planID == trialPlan },
 	})
 }

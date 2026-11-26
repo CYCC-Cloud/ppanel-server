@@ -99,6 +99,7 @@ type NodeConfig struct {
 	NodePullInterval       int64                          `json:"node_pull_interval"`
 	NodePushInterval       int64                          `json:"node_push_interval"`
 	TrafficReportThreshold int64                          `json:"traffic_report_threshold"`
+	DefaultServerCapacity  int64                          `json:"default_server_capacity" validate:"min=0"`
 	IPStrategy             string                         `json:"ip_strategy"`
 	DNS                    []PlatformNodeDNSSnapshot      `json:"dns"`
 	Block                  []string                       `json:"block"`

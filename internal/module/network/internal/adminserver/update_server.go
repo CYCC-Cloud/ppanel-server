@@ -24,6 +24,7 @@ func (s *Service) UpdateServer(ctx context.Context, req *dto.UpdateServerRequest
 		return xerr.Wrapf(err, xerr.DatabaseQueryError, "find server error: %v", err.Error())
 	}
 	data.Name = req.Name
+	data.Capacity = req.Capacity
 	data.Country = req.Country
 	data.City = req.City
 	if req.Address != data.Address {

@@ -32,6 +32,7 @@ func TestUpdateServerWritesOnlyTheAdminColumns(t *testing.T) {
 	}
 	loaded.Name = "edge-2"
 	loaded.Country = ""
+	loaded.Capacity = 25
 	loaded.Protocols = `[{"type":"vless","port":443}]`
 	before := time.Now()
 	if err := repo.UpdateServer(ctx, loaded); err != nil {
@@ -44,6 +45,9 @@ func TestUpdateServerWritesOnlyTheAdminColumns(t *testing.T) {
 	}
 	if got.Name != "edge-2" || got.Country != "" || got.Protocols != loaded.Protocols || got.City != "Berlin" {
 		t.Fatalf("settings after the update = %+v", got)
+	}
+	if got.Capacity != 25 {
+		t.Fatalf("capacity = %d, want 25", got.Capacity)
 	}
 	if got.LastReportedAt == nil || !got.LastReportedAt.Equal(heartbeat) {
 		t.Fatalf("last_reported_at = %v, want the heartbeat %v kept", got.LastReportedAt, heartbeat)

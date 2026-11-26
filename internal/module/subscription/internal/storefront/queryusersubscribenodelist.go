@@ -36,13 +36,14 @@ func (s *Service) QueryUserSubscribeNodeList(ctx context.Context) (*dto.QueryUse
 
 	resp := &dto.QueryUserSubscribeNodeListResponse{}
 	nodesByPlan := make(map[int64][]*node.Node)
+	listed := newListedServers()
 	now := timeutil.Now()
 	for _, details := range userSubscribes {
 		if details == nil {
 			continue
 		}
 		userSubscribe := subscribeFromDetails(details)
-		nodes, err := s.subscriptionNodes(ctx, userSubscribe, details.Subscribe, nodesByPlan, now)
+		nodes, err := s.subscriptionNodes(ctx, userSubscribe, details.Subscribe, nodesByPlan, listed, now)
 		if err != nil {
 			return nil, err
 		}
@@ -68,6 +69,7 @@ func (s *Service) QueryUserSubscribeNodeList(ctx context.Context) (*dto.QueryUse
 		}
 		resp.List = append(resp.List, info)
 	}
+	s.fillServerLoads(ctx, resp.List, listed)
 	return resp, nil
 }
 
@@ -84,7 +86,7 @@ func subscribeFromDetails(item *usersub.SubscribeDetails) *usersub.Subscribe {
 // subscriptionNodes returns the nodes the subscription may use now: none
 // unless it is servable, otherwise the enabled nodes of its plan. A
 // subscription whose plan was deleted has no nodes left to list.
-func (s *Service) subscriptionNodes(ctx context.Context, userSub *usersub.Subscribe, plan *subscribe.Subscribe, nodesByPlan map[int64][]*node.Node, now time.Time) ([]*dto.UserSubscribeNodeInfo, error) {
+func (s *Service) subscriptionNodes(ctx context.Context, userSub *usersub.Subscribe, plan *subscribe.Subscribe, nodesByPlan map[int64][]*node.Node, listed *listedServers, now time.Time) ([]*dto.UserSubscribeNodeInfo, error) {
 	if !userSub.ServableAt(now) {
 		return nil, nil
 	}
@@ -131,6 +133,7 @@ func (s *Service) subscriptionNodes(ctx context.Context, userSub *usersub.Subscr
 				return nil, xerr.Wrapf(err, xerr.ERROR, "invalid Nowhere credential for subscription %d", userSub.Id)
 			}
 		}
+		listed.add(n)
 		infos = append(infos, &dto.UserSubscribeNodeInfo{
 			Id:        n.Id,
 			Name:      n.Name,
@@ -145,4 +148,51 @@ func (s *Service) subscriptionNodes(ctx context.Context, userSub *usersub.Subscr
 		})
 	}
 	return infos, nil
+}
+
+// listedServers records the distinct servers behind the listed nodes and
+// which node belongs to which, so their load is read once for the whole
+// response.
+type listedServers struct {
+	servers map[int64]*node.Server
+	ofNode  map[int64]int64
+}
+
+func newListedServers() *listedServers {
+	return &listedServers{servers: make(map[int64]*node.Server), ofNode: make(map[int64]int64)}
+}
+
+func (l *listedServers) add(n *node.Node) {
+	if n.Server == nil || n.Server.Id <= 0 {
+		return
+	}
+	l.servers[n.Server.Id] = n.Server
+	l.ofNode[n.Id] = n.Server.Id
+}
+
+// fillServerLoads adds each node's server status and load. A load that
+// cannot be read leaves both empty: the node list still serves.
+func (s *Service) fillServerLoads(ctx context.Context, list []dto.UserSubscribeInfo, listed *listedServers) {
+	if s.deps.Loads == nil || len(listed.servers) == 0 {
+		return
+	}
+	servers := make([]*node.Server, 0, len(listed.servers))
+	for _, server := range listed.servers {
+		servers = append(servers, server)
+	}
+	loads, err := s.deps.Loads.ServerLoads(ctx, servers)
+	if err != nil {
+		logger.WithContext(ctx).Errorw("[QueryUserSubscribeNodeList] Read server load failed",
+			logger.Field("error", err.Error()), logger.Field("servers", len(servers)))
+		return
+	}
+	for i := range list {
+		for _, info := range list[i].Nodes {
+			load, ok := loads[listed.ofNode[info.Id]]
+			if !ok {
+				continue
+			}
+			info.Status, info.Load = load.Status, load.Load
+		}
+	}
 }

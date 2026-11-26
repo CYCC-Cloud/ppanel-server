@@ -11,6 +11,7 @@ type CreateServerRequest struct {
 	Address   string     `json:"address"`
 	Sort      int        `json:"sort,omitempty"`
 	Protocols []Protocol `json:"protocols"`
+	Capacity  int64      `json:"capacity" validate:"min=0"` // 0 uses the node settings' default
 }
 
 type DeleteServerRequest struct {
@@ -275,6 +276,7 @@ type UpdateServerNodeConfigRequest struct {
 type Server struct {
 	Id             int64        `json:"id"`
 	Name           string       `json:"name"`
+	Capacity       int64        `json:"capacity"`
 	Country        string       `json:"country"`
 	City           string       `json:"city"`
 	Address        string       `json:"address"`
@@ -359,4 +361,5 @@ type UpdateServerRequest struct {
 	Sort              int                   `json:"sort,omitempty"`
 	Protocols         []Protocol            `json:"protocols"`
 	ProtocolFieldSets []map[string]struct{} `json:"-"`
+	Capacity          int64                 `json:"capacity" validate:"min=0"` // 0 uses the node settings' default
 }

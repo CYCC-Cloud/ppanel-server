@@ -24,6 +24,9 @@ type Access interface {
 	// SubscriptionTrafficLogs pages the traffic records of a user's
 	// subscription and counts them.
 	SubscriptionTrafficLogs(ctx context.Context, userID, subscribeID int64, page, size int) ([]*traffic.TrafficLog, int64, error)
+	// ServerLoads grades the load of the given servers, by server id, from
+	// the same caches the admin list reads, and caches each result.
+	ServerLoads(ctx context.Context, servers []*node.Server) (map[int64]node.ServerLoad, error)
 	// ClearServerCachesByNodeScope drops the node-facing caches (user lists
 	// and configs) of every server carrying a node the scope selects, an
 	// explicit node id or any of the tags, enabled or not. An empty scope
@@ -57,6 +60,10 @@ func (s *service) ListEnabledNodes(ctx context.Context, limit int) ([]*node.Node
 
 func (s *service) SubscriptionTrafficLogs(ctx context.Context, userID, subscribeID int64, page, size int) ([]*traffic.TrafficLog, int64, error) {
 	return s.store.TrafficLog().QueryTrafficLogPageList(ctx, userID, subscribeID, page, size)
+}
+
+func (s *service) ServerLoads(ctx context.Context, servers []*node.Server) (map[int64]node.ServerLoad, error) {
+	return s.loads.ServerLoads(ctx, servers)
 }
 
 func (s *service) ClearServerCachesByNodeScope(ctx context.Context, nodeIDs []int64, tags []string) error {

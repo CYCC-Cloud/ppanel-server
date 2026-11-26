@@ -288,4 +288,6 @@ type UserSubscribeNodeInfo struct {
 	Country   string   `json:"country"`
 	City      string   `json:"city"`
 	CreatedAt int64    `json:"created_at"`
+	Status    string   `json:"status,omitempty"` // online, degraded or offline
+	Load      string   `json:"load,omitempty"`   // omitted while the server is offline
 }

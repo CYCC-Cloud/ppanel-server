@@ -127,7 +127,7 @@ func (m *nodeRepo) FindOneServer(ctx context.Context, id int64) (*node.Server, e
 // writes. last_reported_at is the nodes' heartbeat: a whole-row save wrote
 // back the value read at the start of the request over a heartbeat that
 // landed meanwhile.
-var serverAdminColumns = []string{"name", "country", "city", "address", "sort", "protocols"}
+var serverAdminColumns = []string{"name", "country", "city", "address", "sort", "capacity", "protocols"}
 
 // UpdateServer stores an administrator's changes to the server: its
 // settings columns, zero values included, and updated_at.
