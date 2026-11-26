@@ -9,6 +9,7 @@ import (
 
 	"github.com/perfect-panel/backend/internal/config"
 	dto "github.com/perfect-panel/backend/internal/module/network/contract"
+	"github.com/perfect-panel/backend/internal/module/network/entity/traffic"
 	"github.com/perfect-panel/backend/internal/module/network/internal/adminserver"
 	"github.com/perfect-panel/backend/internal/module/network/internal/configevent"
 	"github.com/perfect-panel/backend/internal/module/network/internal/edge"
@@ -16,6 +17,7 @@ import (
 	"github.com/perfect-panel/backend/internal/module/network/internal/repo"
 	"github.com/perfect-panel/backend/internal/module/network/internal/serverapi"
 	"github.com/perfect-panel/backend/internal/module/network/internal/serverload"
+	"github.com/perfect-panel/backend/internal/module/network/internal/trafficrollup"
 	"github.com/perfect-panel/backend/internal/module/network/internal/trafficstat"
 	"github.com/perfect-panel/backend/internal/module/subscription"
 	"github.com/perfect-panel/backend/internal/repository"
@@ -66,6 +68,15 @@ type Service interface {
 	// PruneTrafficLogs deletes the raw traffic log older than before and
 	// returns how many rows it deleted.
 	PruneTrafficLogs(ctx context.Context, before time.Time) (int64, error)
+	// RunTrafficRollup rebuilds the traffic history's hourly and daily
+	// aggregates from the raw traffic log and applies their retention.
+	RunTrafficRollup(ctx context.Context) error
+	// UserTrafficHistory returns one subscription's zero-filled traffic
+	// series at the given granularity.
+	UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]traffic.TrafficPoint, error)
+	// UserTrafficServers returns one subscription's traffic per server,
+	// largest first.
+	UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]traffic.ServerTraffic, error)
 
 	// Access serves the other modules' reads and cache invalidation (see
 	// access.go).
@@ -95,6 +106,7 @@ type (
 type Snapshot struct {
 	Node      config.NodeConfig
 	Subscribe config.SubscribeConfig
+	Log       config.Log
 }
 
 // Deps declares everything the module needs; the composition root
@@ -129,6 +141,7 @@ func NewRepoBuilder(rds *redis.Client) repository.NetworkBuilder {
 		return repository.NetworkRepos{
 			Nodes:    nodes,
 			Traffic:  repo.NewTrafficRepo(c.DB),
+			Rollup:   repo.NewTrafficRollupRepo(c.DB),
 			NodeKeys: nodes.(repository.NodeCacheKeyBridge),
 		}
 	}
@@ -174,6 +187,16 @@ func New(deps Deps) Service {
 			Traffic: deps.Store.TrafficLog(),
 			Logs:    deps.Logs,
 		}),
+		rollup: trafficrollup.NewService(trafficrollup.Deps{
+			Rollup: deps.Store.TrafficRollup(),
+			Limits: func() trafficrollup.Limits {
+				current := deps.Config().Log
+				return trafficrollup.Limits{
+					HourlyDays: current.HourlyTrafficRetentionDays(),
+					DailyDays:  current.DailyTrafficRetentionDays(),
+				}
+			},
+		}),
 		store:     deps.Store,
 		listeners: listeneridentity.NewService(listeneridentity.Deps{Store: deps.Store}),
 		loads: serverload.NewService(serverload.Deps{
@@ -193,6 +216,7 @@ type service struct {
 	api       *serverapi.Service
 	edge      *edge.Service
 	stats     *trafficstat.Service
+	rollup    *trafficrollup.Service
 	store     Store
 	listeners *listeneridentity.Service
 	loads     *serverload.Service
@@ -306,6 +330,8 @@ type Store interface {
 	edge.Store
 	// TrafficLog serves the traffic-log reads of the other modules.
 	TrafficLog() repository.TrafficRepo
+	// TrafficRollup serves the traffic history's aggregates.
+	TrafficRollup() repository.TrafficRollupRepo
 }
 
 func (s *service) RecordDailyTrafficStatistics(ctx context.Context) error {
@@ -314,4 +340,16 @@ func (s *service) RecordDailyTrafficStatistics(ctx context.Context) error {
 
 func (s *service) PruneTrafficLogs(ctx context.Context, before time.Time) (int64, error) {
 	return s.stats.PruneTrafficLogs(ctx, before)
+}
+
+func (s *service) RunTrafficRollup(ctx context.Context) error {
+	return s.rollup.Run(ctx)
+}
+
+func (s *service) UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]traffic.TrafficPoint, error) {
+	return s.rollup.UserHistory(ctx, userSubscribeID, userID, granularity, start, end)
+}
+
+func (s *service) UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]traffic.ServerTraffic, error) {
+	return s.rollup.UserServers(ctx, userSubscribeID, userID, start, end)
 }

@@ -20,6 +20,7 @@ const (
 	categoryVerifyCode = "verify_code"
 	categoryNode       = "server"
 	categoryCurrency   = "currency"
+	categoryLog        = "log"
 )
 
 // readSettings reads one settings category and decodes it into target. A
@@ -83,6 +84,30 @@ func Subscribe(ctx context.Context, deps *Dependencies) error {
 		return err
 	}
 	deps.updateRuntime(func(current *config.Runtime) { current.Subscribe = subscribeConfig })
+	return nil
+}
+
+// Log loads the log retention, including the traffic history's hourly and
+// daily retention. Without it a restart would fall back to the configuration
+// file's defaults: an hourly retention an administrator shortened or extended
+// would silently revert, and the rollup's next retention pass would delete
+// history the administrator meant to keep.
+func Log(ctx context.Context, deps *Dependencies) error {
+	logger.Debug("Log config initialization")
+	entries, err := deps.Settings.GetLogConfig(ctx)
+	if err != nil {
+		return wrapf(err, xerr.DatabaseQueryError, "read %s settings", categoryLog)
+	}
+	// Start from the defaults: a category this build does not know, or a
+	// database upgraded from before the traffic history, must not leave the
+	// retention at zero and let the cleanup delete everything.
+	retention := config.Log{
+		AutoClear:                  true,
+		ClearDays:                  config.DefaultClearDays,
+		TrafficHourlyRetentionDays: config.DefaultTrafficHourlyRetentionDays,
+	}
+	decodeSettings(ctx, categoryLog, entries, &retention)
+	deps.updateRuntime(func(current *config.Runtime) { current.Log = retention })
 	return nil
 }
 

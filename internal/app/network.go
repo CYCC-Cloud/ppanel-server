@@ -22,6 +22,7 @@ func newNetworkModule(store repository.Store, srv *Application) network.Service 
 			return network.Snapshot{
 				Node:      current.Node,
 				Subscribe: current.Subscribe,
+				Log:       current.Log,
 			}
 		},
 		Multiplier: func(at time.Time) float32 {

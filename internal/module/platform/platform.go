@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/oschwald/geoip2-golang"
+	"github.com/perfect-panel/backend/internal/config"
 	dto "github.com/perfect-panel/backend/internal/module/platform/contract"
 	"github.com/perfect-panel/backend/internal/module/platform/internal/auditlog"
 	"github.com/perfect-panel/backend/internal/module/platform/internal/dashboard"
@@ -162,7 +163,7 @@ type Deps struct {
 	Store   auditlog.PlatformTransactor
 	// OnLogSettingChanged propagates a committed retention change to the
 	// running configuration.
-	OnLogSettingChanged func(autoClear bool, clearDays int64)
+	OnLogSettingChanged func(retention config.Log)
 	// LogRetention reads the current (mutable) retention configuration.
 	LogRetention func() (autoClear bool, clearDays int64)
 	// TrafficRetention prunes the network's raw traffic log with the system

@@ -35,9 +35,12 @@ type txNetworkStore struct{ nodes repository.NodeRepo }
 
 func (s txNetworkStore) Node() repository.NodeRepo        { return s.nodes }
 func (txNetworkStore) TrafficLog() repository.TrafficRepo { return nil }
-func (txNetworkStore) Inbox() repository.InboxRepo        { return nil }
-func (txNetworkStore) Outbox() repository.OutboxRepo      { return nil }
-func (txNetworkStore) Log() repository.LogRepo            { return nil }
+func (txNetworkStore) TrafficRollup() repository.TrafficRollupRepo {
+	return nil
+}
+func (txNetworkStore) Inbox() repository.InboxRepo   { return nil }
+func (txNetworkStore) Outbox() repository.OutboxRepo { return nil }
+func (txNetworkStore) Log() repository.LogRepo       { return nil }
 
 func newTxNodeStore(t *testing.T) (*gorm.DB, txNodeStore) {
 	t.Helper()

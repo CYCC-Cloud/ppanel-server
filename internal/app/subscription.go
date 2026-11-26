@@ -44,6 +44,7 @@ func newSubscriptionModule(store repository.Store, srv *Application) subscriptio
 		DeliveryLimiter: subscription.NewDeliveryLimiter(srv.Redis),
 		Accounts:        subscriptionAccounts{srv: srv},
 		Traffic:         subscriptionNetworkReads{srv},
+		TrafficHistory:  subscriptionNetworkReads{srv},
 		Orders:          billingOrders{billing: srv.Billing},
 		Refunds:         srv.Billing,
 		QuotaGifts:      srv.Billing,

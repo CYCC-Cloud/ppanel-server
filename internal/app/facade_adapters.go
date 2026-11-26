@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/perfect-panel/backend/internal/module/network/entity/node"
 	"github.com/perfect-panel/backend/internal/module/network/entity/traffic"
@@ -32,6 +33,14 @@ func (r subscriptionNetworkReads) SubscriptionTrafficLogs(ctx context.Context, u
 
 func (r subscriptionNetworkReads) ServerLoads(ctx context.Context, servers []*node.Server) (map[int64]node.ServerLoad, error) {
 	return r.srv.Network.ServerLoads(ctx, servers)
+}
+
+func (r subscriptionNetworkReads) UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]traffic.TrafficPoint, error) {
+	return r.srv.Network.UserTrafficHistory(ctx, userSubscribeID, userID, granularity, start, end)
+}
+
+func (r subscriptionNetworkReads) UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]traffic.ServerTraffic, error) {
+	return r.srv.Network.UserTrafficServers(ctx, userSubscribeID, userID, start, end)
 }
 
 // identityServerCaches serves the identity module's node-cache invalidation

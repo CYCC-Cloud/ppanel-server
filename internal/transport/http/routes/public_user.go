@@ -32,6 +32,8 @@ func registerPublicUserRoutes(router *server.Hertz, deps Dependencies) {
 	publicUserGroupRouter.GET("/subscribe_log", subscriptionPublicUser.GetSubscribeLogHandler(deps.Subscription))
 	publicUserGroupRouter.PUT("/subscribe_note", subscriptionPublicUser.UpdateUserSubscribeNoteHandler(deps.Subscription))
 	publicUserGroupRouter.PUT("/subscribe_token", subscriptionPublicUser.ResetUserSubscribeTokenHandler(deps.Subscription))
+	publicUserGroupRouter.GET("/traffic/history", subscriptionPublicUser.GetUserTrafficHistoryHandler(deps.Subscription))
+	publicUserGroupRouter.GET("/traffic/servers", subscriptionPublicUser.GetUserTrafficServersHandler(deps.Subscription))
 	publicUserGroupRouter.PUT("/unbind_device", identityPublicUser.UnbindDeviceHandler(deps.Identity))
 	publicUserGroupRouter.POST("/unbind_oauth", identityPublicUser.UnbindOAuthHandler(deps.Identity))
 	publicUserGroupRouter.POST("/unbind_telegram", identityPublicUser.UnbindTelegramHandler(deps.Identity))

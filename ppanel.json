@@ -10826,6 +10826,130 @@
                 }
             }
         },
+        "/v1/public/user/traffic/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get User Traffic History",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "end",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "minute",
+                            "hour",
+                            "day",
+                            "month"
+                        ],
+                        "type": "string",
+                        "name": "granularity",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "start",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "user_subscribe_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/result.ResponseSuccessBean"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.TrafficHistoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/public/user/traffic/servers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get User Traffic Servers",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "end",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "start",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "user_subscribe_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/result.ResponseSuccessBean"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.TrafficServersResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/v1/public/user/unbind_device": {
             "put": {
                 "security": [
@@ -14599,6 +14723,16 @@
                     "type": "integer",
                     "maximum": 3650,
                     "minimum": 7
+                },
+                "traffic_daily_retention_days": {
+                    "type": "integer",
+                    "maximum": 3650,
+                    "minimum": 0
+                },
+                "traffic_hourly_retention_days": {
+                    "type": "integer",
+                    "maximum": 3650,
+                    "minimum": 7
                 }
             }
         },
@@ -17722,6 +17856,34 @@
                 }
             }
         },
+        "dto.TrafficHistoryPoint": {
+            "type": "object",
+            "properties": {
+                "download": {
+                    "type": "integer"
+                },
+                "time": {
+                    "type": "integer"
+                },
+                "upload": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.TrafficHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TrafficHistoryPoint"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.TrafficLog": {
             "type": "object",
             "properties": {
@@ -17771,6 +17933,49 @@
                 },
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.TrafficServerItem": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "download": {
+                    "type": "integer"
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "server_id": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "upload": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.TrafficServersResponse": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TrafficServerItem"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },

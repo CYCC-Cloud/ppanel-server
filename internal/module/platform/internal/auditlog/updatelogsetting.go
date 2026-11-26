@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/perfect-panel/backend/internal/config"
 	dto "github.com/perfect-panel/backend/internal/module/platform/contract"
 	"github.com/perfect-panel/backend/internal/module/platform/entity/log"
+	"github.com/perfect-panel/backend/internal/module/platform/entity/system"
 	"github.com/perfect-panel/backend/internal/repository/kernel"
 	"github.com/perfect-panel/backend/pkg/logger"
 	"github.com/perfect-panel/backend/pkg/xerr"
@@ -30,18 +32,44 @@ func (s *Service) UpdateLogSetting(ctx context.Context, req *dto.LogSetting) err
 	if err := validateLogSetting(req); err != nil {
 		return err
 	}
+	retention := config.Log{AutoClear: *req.AutoClear, ClearDays: req.ClearDays}
 	err := s.deps.Store.InPlatformTx(ctx, func(store kernel.PlatformStore) error {
 		systemStore := store.System()
+		stored, err := systemStore.GetLogConfig(ctx)
+		if err != nil {
+			return err
+		}
+		// An omitted retention keeps what is stored, so an older admin UI
+		// does not reset a setting it does not know.
+		storedRetention := storedLogSetting(ctx, stored)
+		hourly := storedRetention.HourlyTrafficRetentionDays()
+		daily := storedRetention.DailyTrafficRetentionDays()
+		if req.TrafficHourlyRetentionDays != nil {
+			hourly = *req.TrafficHourlyRetentionDays
+		}
+		if req.TrafficDailyRetentionDays != nil {
+			daily = *req.TrafficDailyRetentionDays
+		}
+		retention.TrafficHourlyRetentionDays = hourly
+		retention.TrafficDailyRetentionDays = daily
+
 		if err := systemStore.UpdateValueByCategoryKey(ctx, "log", "AutoClear", strconv.FormatBool(*req.AutoClear), "bool"); err != nil {
 			return err
 		}
 		if err := systemStore.UpdateValueByCategoryKey(ctx, "log", "ClearDays", strconv.FormatInt(req.ClearDays, 10), "int64"); err != nil {
 			return err
 		}
+		if err := systemStore.UpdateValueByCategoryKey(ctx, "log", "TrafficHourlyRetentionDays", strconv.FormatInt(hourly, 10), "int64"); err != nil {
+			return err
+		}
+		if err := systemStore.UpdateValueByCategoryKey(ctx, "log", "TrafficDailyRetentionDays", strconv.FormatInt(daily, 10), "int64"); err != nil {
+			return err
+		}
 		row, err := log.NewAdminActionLog(log.AdminActionFrom(ctx, log.AdminAction{
 			Action: "settings.update",
 			Object: "log",
-			Detail: fmt.Sprintf("keys: AutoClear, ClearDays; auto_clear=%t clear_days=%d", *req.AutoClear, req.ClearDays),
+			Detail: fmt.Sprintf("keys: AutoClear, ClearDays, TrafficHourlyRetentionDays, TrafficDailyRetentionDays; auto_clear=%t clear_days=%d traffic_hourly_retention_days=%d traffic_daily_retention_days=%d",
+				*req.AutoClear, req.ClearDays, hourly, daily),
 		}))
 		if err != nil {
 			return err
@@ -54,14 +82,38 @@ func (s *Service) UpdateLogSetting(ctx context.Context, req *dto.LogSetting) err
 	}
 
 	if s.deps.OnLogSettingChanged != nil {
-		s.deps.OnLogSettingChanged(*req.AutoClear, req.ClearDays)
+		s.deps.OnLogSettingChanged(retention)
 	}
 	return nil
+}
+
+// storedLogSetting decodes the stored log settings with their defaults.
+func storedLogSetting(ctx context.Context, entries []*system.System) config.Log {
+	retention := config.Log{
+		AutoClear:                  true,
+		ClearDays:                  config.DefaultClearDays,
+		TrafficHourlyRetentionDays: config.DefaultTrafficHourlyRetentionDays,
+	}
+	if err := config.DecodeSystemConfig(entries, &retention); err != nil {
+		logger.WithContext(ctx).Errorw("[UpdateLogSetting] stored log settings could not be applied, the defaults stay",
+			logger.Field("error", err.Error()))
+	}
+	return retention
 }
 
 func validateLogSetting(req *dto.LogSetting) error {
 	if req == nil || req.AutoClear == nil || req.ClearDays < MinRetentionDays || req.ClearDays > MaxRetentionDays {
 		return xerr.Errorf(xerr.InvalidParams, "log retention requires auto_clear and clear_days between %d and %d", MinRetentionDays, MaxRetentionDays)
+	}
+	if hourly := req.TrafficHourlyRetentionDays; hourly != nil &&
+		(*hourly < config.MinTrafficHourlyRetentionDays || *hourly > config.MaxTrafficHourlyRetentionDays) {
+		return xerr.Errorf(xerr.InvalidParams, "traffic hourly retention must be between %d and %d days",
+			config.MinTrafficHourlyRetentionDays, config.MaxTrafficHourlyRetentionDays)
+	}
+	if daily := req.TrafficDailyRetentionDays; daily != nil && *daily != 0 &&
+		(*daily < config.MinTrafficDailyRetentionDays || *daily > config.MaxTrafficDailyRetentionDays) {
+		return xerr.Errorf(xerr.InvalidParams, "traffic daily retention must be 0 (keep forever) or between %d and %d days",
+			config.MinTrafficDailyRetentionDays, config.MaxTrafficDailyRetentionDays)
 	}
 	return nil
 }

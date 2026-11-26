@@ -177,6 +177,7 @@ func (srv *Application) taskDependencies(bootstrapped *lifecycle.Readiness) task
 		Traffic: traffic.Dependencies{
 			Redis:      srv.Redis,
 			Statistics: srv.Network,
+			Rollup:     srv.Network,
 			Logs:       srv.Platform,
 			Aggregator: network.TrafficAggregatorDeps{
 				Reports:       srv.Store.Inbox(),

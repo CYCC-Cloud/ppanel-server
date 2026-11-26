@@ -33,9 +33,9 @@ func newPlatformModule(store repository.Store, srv *Application) platform.Servic
 		Tickets: platformTickets{support: func() support.TicketStatistics { return srv.Support }},
 		Nodes:   networkReads,
 		Cache:   srv.Redis,
-		OnLogSettingChanged: func(autoClear bool, clearDays int64) {
+		OnLogSettingChanged: func(retention config.Log) {
 			srv.Runtime.UpdateRuntime(func(current *config.Runtime) {
-				current.Log = config.Log{AutoClear: autoClear, ClearDays: clearDays}
+				current.Log = retention
 			})
 		},
 		LogRetention: func() (bool, int64) {

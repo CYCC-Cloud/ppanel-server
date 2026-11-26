@@ -16,7 +16,9 @@ type Dependencies struct {
 	Redis      *redis.Client
 	Aggregator network.TrafficAggregatorDeps
 	// Statistics records the daily traffic statistics (the network facade);
-	// Logs applies the log retention (the platform facade).
+	// Logs applies the log retention (the platform facade); Rollup rebuilds
+	// the traffic history's aggregates (the network facade).
 	Statistics StatRecorder
 	Logs       LogCleaner
+	Rollup     RollupRunner
 }

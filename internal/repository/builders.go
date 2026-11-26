@@ -130,6 +130,9 @@ type IdentityBuilder func(conn ModuleConn, bridges IdentityBridges) IdentityRepo
 type NetworkRepos struct {
 	Nodes   NodeRepo
 	Traffic TrafficRepo
+	// Rollup is the fork's traffic rollup: the hourly and daily aggregates
+	// the user traffic history reads.
+	Rollup TrafficRollupRepo
 	// NodeKeys feeds the subscription bundle's plan cache invalidation.
 	NodeKeys NodeCacheKeyBridge
 }

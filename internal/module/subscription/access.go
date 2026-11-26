@@ -2,7 +2,9 @@ package subscription
 
 import (
 	"context"
+	"time"
 
+	trafficEntity "github.com/perfect-panel/backend/internal/module/network/entity/traffic"
 	"github.com/perfect-panel/backend/internal/module/subscription/entity/client"
 	"github.com/perfect-panel/backend/internal/module/subscription/entity/subscribe"
 	usersubEntity "github.com/perfect-panel/backend/internal/module/subscription/entity/usersub"
@@ -56,6 +58,7 @@ type ServedSubscription = nodeaccess.Served
 // facade satisfies them): the nodes delivery, the storefront and the
 // template preview list, the servers' load for the storefront, and the admin
 // view of a subscription's traffic.
+// TrafficHistoryReader is the user traffic history's read port.
 type (
 	NodeReader interface {
 		delivery.NodeLister
@@ -63,7 +66,15 @@ type (
 		storefront.LoadReader
 		application.NodeLister
 	}
-	TrafficLogReader = usersub.TrafficLogReader
+	TrafficLogReader     = usersub.TrafficLogReader
+	TrafficHistoryReader interface {
+		// UserTrafficHistory returns the subscription's zero-filled series
+		// at the given granularity over [start, end).
+		UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]trafficEntity.TrafficPoint, error)
+		// UserTrafficServers returns the subscription's traffic per server
+		// over [start, end), largest first.
+		UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]trafficEntity.ServerTraffic, error)
+	}
 )
 
 func (s *service) SubscriptionByToken(ctx context.Context, token string) (*usersubEntity.Subscribe, error) {

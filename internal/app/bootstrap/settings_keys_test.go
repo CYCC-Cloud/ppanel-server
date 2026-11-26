@@ -43,6 +43,9 @@ var settingsReaders = []settingsReader{
 	{category: categoryNode, bootstrap: &config.NodeDBConfig{}, admin: &config.NodeDBConfig{}, written: dto.NodeConfig{}, unread: []string{nodeMultiplierKey}},
 	// The seeded Currency key predates CurrencyUnit and has no reader.
 	{category: categoryCurrency, bootstrap: &currencySettings{}, admin: &dto.CurrencyConfig{}, written: dto.CurrencyConfig{}, unread: []string{"Currency"}},
+	// The log retention, including the traffic history's hourly and daily
+	// retention the rollup applies.
+	{category: categoryLog, bootstrap: &config.Log{}, admin: &dto.LogSetting{}, written: dto.LogSetting{}},
 }
 
 type storedSetting struct {

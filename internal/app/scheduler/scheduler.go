@@ -61,6 +61,11 @@ var periodicTasks = []periodicTask{
 	{spec: "10 0 * * *", taskType: taskqueue.SchedulerDailyOrderReport, name: "daily order report", opts: []asynq.Option{asynq.MaxRetry(3)}},
 	// schedule traffic stat task: every day at 00:00
 	{spec: "0 0 * * *", taskType: taskqueue.SchedulerTrafficStat, name: "traffic stat", opts: []asynq.Option{asynq.MaxRetry(3)}},
+	// Rebuild the user traffic history's hourly and daily aggregates from
+	// the raw log. Ten minutes bounds how long the hour in progress and
+	// today can lag; the run overwrites its buckets, so the ticks of two
+	// replicas do not double count.
+	{spec: "@every 10m", taskType: taskqueue.SchedulerTrafficRollup, name: "traffic rollup", opts: []asynq.Option{asynq.MaxRetry(3)}},
 	// Retention runs independently after daily statistics. It retries failures
 	// instead of waiting silently for the next day's statistics task.
 	{spec: "30 2 * * *", taskType: taskqueue.SchedulerLogCleanup, name: "log cleanup", opts: []asynq.Option{asynq.MaxRetry(3)}},
