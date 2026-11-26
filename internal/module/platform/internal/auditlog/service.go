@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/perfect-panel/backend/internal/config"
 	"github.com/perfect-panel/backend/internal/module/platform/internal/readmodel"
 	"github.com/perfect-panel/backend/internal/repository/kernel"
 )
@@ -37,7 +38,7 @@ type Deps struct {
 	Store            PlatformTransactor
 	// OnLogSettingChanged propagates a committed retention change to the
 	// running configuration.
-	OnLogSettingChanged func(autoClear bool, clearDays int64)
+	OnLogSettingChanged func(retention config.Log)
 	// LogRetention reads the current (mutable) retention configuration.
 	LogRetention func() (autoClear bool, clearDays int64)
 }

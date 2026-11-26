@@ -244,10 +244,16 @@ type LogResponse struct {
 
 // LogSetting is the log retention: ClearDays may not go below seven days,
 // so the login, registration and subscription logs outlive the time it
-// takes to notice an incident.
+// takes to notice an incident. The two traffic history retentions are
+// optional in a request: an omitted one keeps the stored value, so an older
+// admin UI does not reset them. A zero daily retention keeps the daily
+// totals forever.
 type LogSetting struct {
 	AutoClear *bool `json:"auto_clear" validate:"required"`
 	ClearDays int64 `json:"clear_days" validate:"required,gte=7,lte=3650"`
+
+	TrafficHourlyRetentionDays *int64 `json:"traffic_hourly_retention_days,omitempty" validate:"omitempty,gte=7,lte=3650"`
+	TrafficDailyRetentionDays  *int64 `json:"traffic_daily_retention_days,omitempty" validate:"omitempty,gte=0,lte=3650"`
 }
 
 type LoginLog struct {

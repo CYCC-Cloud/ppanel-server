@@ -6,8 +6,11 @@ package selfsub
 
 import (
 	"context"
+	"time"
 
 	"github.com/perfect-panel/backend/internal/module/billing/entity/order"
+	"github.com/perfect-panel/backend/internal/module/network/entity/node"
+	trafficEntity "github.com/perfect-panel/backend/internal/module/network/entity/traffic"
 	"github.com/perfect-panel/backend/internal/module/platform/entity/inbox"
 	"github.com/perfect-panel/backend/internal/module/platform/entity/log"
 	"github.com/perfect-panel/backend/internal/module/subscription/entity/usersub"
@@ -19,6 +22,11 @@ import (
 type Deps struct {
 	UserSubs UserSubscriptions
 	Plans    repository.SubscribeRepo
+	// Traffic is the network port of the user traffic history: one
+	// subscription's stored traffic per bucket and per server. Nodes lists
+	// the enabled nodes of the subscription's plan, which label its servers.
+	Traffic TrafficHistoryReader
+	Nodes   NodeLister
 	// Orders, Refunds, Logs and Inbox are ports onto the billing and
 	// platform domains: the order a refund pays back, the refund stage of a
 	// cancellation, the system log and the cancellation markers.
@@ -50,6 +58,20 @@ type UserSubscriptions interface {
 // OrderReader reads an order with its renewals: what a refund pays back.
 type OrderReader interface {
 	FindOneDetails(ctx context.Context, id int64) (*order.Details, error)
+}
+
+// TrafficHistoryReader is the network port of the user traffic history; the
+// network facade provides it.
+type TrafficHistoryReader interface {
+	UserTrafficHistory(ctx context.Context, userSubscribeID, userID int64, granularity string, start, end time.Time) ([]trafficEntity.TrafficPoint, error)
+	UserTrafficServers(ctx context.Context, userSubscribeID, userID int64, start, end time.Time) ([]trafficEntity.ServerTraffic, error)
+}
+
+// NodeLister is the network read port (the network facade) listing the
+// enabled nodes, with their servers, a plan selects; the traffic history
+// labels each server with the plan's node names on it.
+type NodeLister interface {
+	ListEnabledNodesByScope(ctx context.Context, nodeIDs []int64, tags []string) ([]*node.Node, error)
 }
 
 // RefundSettler is the billing port of the cancellation's refund stage; the

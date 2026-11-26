@@ -441,6 +441,45 @@ type VerifyCode struct {
 type Log struct {
 	AutoClear bool  `yaml:"AutoClear" default:"true"`
 	ClearDays int64 `yaml:"ClearDays" default:"7"`
+	// TrafficHourlyRetentionDays and TrafficDailyRetentionDays are the
+	// retention of the traffic history's rollup tables, in days. The raw
+	// traffic log stays under AutoClear/ClearDays. A zero daily value keeps
+	// the daily totals forever.
+	TrafficHourlyRetentionDays int64 `yaml:"TrafficHourlyRetentionDays" default:"90"`
+	TrafficDailyRetentionDays  int64 `yaml:"TrafficDailyRetentionDays" default:"0"`
+}
+
+// The retention the traffic history may be configured with, in days. The
+// hourly floor keeps a billing period's hourly detail for the support
+// questions that need it; the daily floor is the shortest history a user can
+// be shown, and zero means forever.
+const (
+	DefaultTrafficHourlyRetentionDays int64 = 90
+	MinTrafficHourlyRetentionDays     int64 = 7
+	MaxTrafficHourlyRetentionDays     int64 = 3650
+	MinTrafficDailyRetentionDays      int64 = 30
+	MaxTrafficDailyRetentionDays      int64 = 3650
+	// DefaultClearDays is the seeded auto-clear retention of the system log.
+	DefaultClearDays int64 = 7
+)
+
+// HourlyTrafficRetentionDays returns the hourly retention in days, with the
+// default applied to an unset or negative value (a settings row this build
+// does not know, or a configuration written before the setting existed).
+func (l Log) HourlyTrafficRetentionDays() int64 {
+	if l.TrafficHourlyRetentionDays <= 0 {
+		return DefaultTrafficHourlyRetentionDays
+	}
+	return l.TrafficHourlyRetentionDays
+}
+
+// DailyTrafficRetentionDays returns the daily retention in days; zero keeps
+// the daily totals forever.
+func (l Log) DailyTrafficRetentionDays() int64 {
+	if l.TrafficDailyRetentionDays < 0 {
+		return 0
+	}
+	return l.TrafficDailyRetentionDays
 }
 
 type NodeDBConfig struct {

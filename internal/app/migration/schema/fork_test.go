@@ -191,6 +191,16 @@ func assertForkSchema(t *testing.T, db *gorm.DB, driver string) {
 	if !db.Migrator().HasColumn("nodes", "listener_key") {
 		t.Fatal("nodes.listener_key is missing")
 	}
+	for _, column := range []string{"hour_start", "user_subscribe_id", "user_id", "server_id", "upload", "download"} {
+		if !db.Migrator().HasColumn("traffic_hourly", column) {
+			t.Fatalf("traffic_hourly.%s is missing", column)
+		}
+	}
+	for _, column := range []string{"day", "user_subscribe_id", "user_id", "server_id", "upload", "download"} {
+		if !db.Migrator().HasColumn("traffic_daily", column) {
+			t.Fatalf("traffic_daily.%s is missing", column)
+		}
+	}
 	assertMigrationVersion(t, db, "schema_migrations", latestVersion(t, migrationNames(t, "database/"+driver, "up")))
 	assertMigrationVersion(t, db, forkMigrationsTable, latestVersion(t, forkMigrationVersions(t, driver, "up")))
 }

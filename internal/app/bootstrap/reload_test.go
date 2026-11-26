@@ -64,6 +64,9 @@ func (r *memSystem) GetNodeConfig(context.Context) ([]*system.System, error) {
 func (r *memSystem) GetCurrencyConfig(context.Context) ([]*system.System, error) {
 	return r.read(categoryCurrency)
 }
+func (r *memSystem) GetLogConfig(context.Context) ([]*system.System, error) {
+	return r.read(categoryLog)
+}
 
 func (r *memSystem) FindNodeMultiplierConfig(context.Context) (*system.System, error) {
 	if r.multiplierErr != nil {
@@ -152,6 +155,10 @@ func healthyStore() *memStore {
 					setting(categoryNode, "DNS", `[{"proto":"udp","address":"1.1.1.1","domains":["example.com"]}]`, "string"),
 				},
 				categoryCurrency: {setting(categoryCurrency, "CurrencyUnit", "USD", "string")},
+				categoryLog: {
+					setting(categoryLog, "TrafficHourlyRetentionDays", "30", "int64"),
+					setting(categoryLog, "TrafficDailyRetentionDays", "365", "int64"),
+				},
 			},
 			fail:       map[string]bool{},
 			multiplier: setting(categoryNode, nodeMultiplierKey, "[]", "string"),
@@ -225,6 +232,7 @@ func TestReloadDispatchesTheNamesAdminHandlersSend(t *testing.T) {
 		"mobile":    {"Mobile"},
 		"currency":  {"Currency"},
 		"telegram":  {"Telegram"},
+		"log":       {"Log"},
 	}
 	if len(cases) != len(loaders) {
 		t.Fatalf("%d reloadable subsystems, %d covered here", len(loaders), len(cases))
@@ -280,6 +288,7 @@ func TestReloadKeepsThePreviousConfigurationWhenTheStoreFails(t *testing.T) {
 		SubsystemMobile:    func(s *memStore) { s.auth.fail["mobile"] = true },
 		SubsystemCurrency:  func(s *memStore) { s.system.fail[categoryCurrency] = true },
 		SubsystemTelegram:  func(s *memStore) { s.auth.fail["telegram"] = true },
+		SubsystemLog:       func(s *memStore) { s.system.fail[categoryLog] = true },
 	}
 	if len(failures) != len(loaders) {
 		t.Fatalf("%d reloadable subsystems, %d covered here", len(loaders), len(failures))

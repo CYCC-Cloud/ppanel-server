@@ -62,6 +62,7 @@ type Settings interface {
 	GetVerifyCodeConfig(ctx context.Context) ([]*system.System, error)
 	GetNodeConfig(ctx context.Context) ([]*system.System, error)
 	GetCurrencyConfig(ctx context.Context) ([]*system.System, error)
+	GetLogConfig(ctx context.Context) ([]*system.System, error)
 	FindNodeMultiplierConfig(ctx context.Context) (*system.System, error)
 	Insert(ctx context.Context, data *system.System) error
 }
@@ -132,6 +133,7 @@ const (
 	SubsystemMobile    Subsystem = "mobile"
 	SubsystemCurrency  Subsystem = "currency"
 	SubsystemTelegram  Subsystem = "telegram"
+	SubsystemLog       Subsystem = "log"
 )
 
 // ErrUnknownSubsystem is returned by Reload for a name no subsystem answers
@@ -153,13 +155,14 @@ var loaders = map[Subsystem]func(context.Context, *Dependencies) error{
 	SubsystemMobile:    Mobile,
 	SubsystemCurrency:  Currency,
 	SubsystemTelegram:  Telegram,
+	SubsystemLog:       Log,
 }
 
 // startupOrder is the order Start loads the subsystems in. Node reads the
 // secret NodeSecret provisions, so NodeSecret runs right before it.
 var startupOrder = []Subsystem{
 	SubsystemSite, SubsystemNode, SubsystemEmail, SubsystemDevice, SubsystemInvite, SubsystemVerify,
-	SubsystemSubscribe, SubsystemRegister, SubsystemMobile, SubsystemCurrency, SubsystemTelegram,
+	SubsystemSubscribe, SubsystemRegister, SubsystemMobile, SubsystemCurrency, SubsystemTelegram, SubsystemLog,
 }
 
 // Start loads startup state in dependency order. Migration and node-secret

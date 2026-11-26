@@ -43,6 +43,8 @@ type Store interface {
 	TelegramTopic() TelegramTopicRepo
 	Ticket() TicketRepo
 	TrafficLog() TrafficRepo
+	// TrafficRollup is the fork's hourly and daily traffic aggregates.
+	TrafficRollup() TrafficRollupRepo
 	User() UserRepo
 	UserAuth() UserAuthRepo
 	UserSubscription() UserSubscriptionRepo
@@ -134,6 +136,7 @@ func (s *GormStore) Task() TaskRepo                               { return s.pla
 func (s *GormStore) TelegramTopic() TelegramTopicRepo             { return s.notification.TelegramTopics }
 func (s *GormStore) Ticket() TicketRepo                           { return s.support.Tickets }
 func (s *GormStore) TrafficLog() TrafficRepo                      { return s.network.Traffic }
+func (s *GormStore) TrafficRollup() TrafficRollupRepo             { return s.network.Rollup }
 func (s *GormStore) User() UserRepo                               { return s.identity.Users }
 func (s *GormStore) UserAuth() UserAuthRepo                       { return s.identity.UserAuths }
 func (s *GormStore) UserSubscription() UserSubscriptionRepo       { return s.subscription.UserSubs }

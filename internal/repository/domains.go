@@ -75,6 +75,7 @@ type IdentityStore interface {
 type NetworkStore interface {
 	Node() NodeRepo
 	TrafficLog() TrafficRepo
+	TrafficRollup() TrafficRollupRepo
 	Inbox() InboxRepo
 	Outbox() OutboxRepo
 	Log() LogRepo

@@ -43,6 +43,32 @@ func TestSystemConfigSliceReflectToStructUsesNarrowContract(t *testing.T) {
 	}
 }
 
+// A pointer to an integer tells an omitted setting from a zero one: a
+// request DTO keeps the stored value when the pointer is nil, while an empty
+// stored value clears it.
+func TestSystemConfigFillsIntegerPointers(t *testing.T) {
+	target := struct {
+		Hourly *int64
+		Daily  *int64
+		Empty  *int64
+	}{}
+	SystemConfigSliceReflectToStruct([]testSystemConfigEntry{
+		{key: "Hourly", value: "90", typ: "int64"},
+		{key: "Daily", value: "0", typ: "int64"},
+		{key: "Empty", value: "", typ: "int64"},
+	}, &target)
+
+	if target.Hourly == nil || *target.Hourly != 90 {
+		t.Fatalf("Hourly = %v, want 90", target.Hourly)
+	}
+	if target.Daily == nil || *target.Daily != 0 {
+		t.Fatalf("Daily = %v, want a zero value kept", target.Daily)
+	}
+	if target.Empty != nil {
+		t.Fatalf("Empty = %v, want nil", *target.Empty)
+	}
+}
+
 func TestSystemConfigJSONCompatibility(t *testing.T) {
 	target := struct {
 		Options struct {

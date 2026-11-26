@@ -94,6 +94,11 @@ type Service interface {
 	ResetOwnSubscribeToken(ctx context.Context, req *dto.ResetUserSubscribeTokenRequest) error
 	GetSubscribeLog(ctx context.Context, req *dto.GetSubscribeLogRequest) (*dto.GetSubscribeLogResponse, error)
 	UpdateUserSubscribeNote(ctx context.Context, req *dto.UpdateUserSubscribeNoteRequest) error
+	// UserTrafficHistory returns the owner's traffic history of one
+	// subscription as a zero-filled series, and UserTrafficServers its
+	// traffic per server.
+	UserTrafficHistory(ctx context.Context, req *dto.TrafficHistoryRequest) (*dto.TrafficHistoryResponse, error)
+	UserTrafficServers(ctx context.Context, req *dto.TrafficServersRequest) (*dto.TrafficServersResponse, error)
 	PreUnsubscribe(ctx context.Context, req *dto.PreUnsubscribeRequest) (*dto.PreUnsubscribeResponse, error)
 	// Unsubscribe cancels in a subscription transaction and settles the
 	// refund in a billing transaction, resumable via the idempotent inbox.
@@ -175,6 +180,8 @@ type Deps struct {
 
 	// User-subscription administration dependencies.
 	Traffic TrafficLogReader
+	// TrafficHistory is the network port of the user traffic history.
+	TrafficHistory TrafficHistoryReader
 	// Operations composes only the persistence capabilities of this module's
 	// administration, lifecycle and fulfillment use cases.
 	Operations Store
@@ -288,6 +295,8 @@ func New(deps Deps) Service {
 		selfSubs: selfsub.NewService(selfsub.Deps{
 			UserSubs:    deps.UserSubs,
 			Plans:       deps.Plans,
+			Traffic:     deps.TrafficHistory,
+			Nodes:       deps.Nodes,
 			Orders:      deps.Orders,
 			Refunds:     deps.Refunds,
 			Cache:       deps.UserSubs,
@@ -470,6 +479,14 @@ func (s *service) ResetOwnSubscribeToken(ctx context.Context, req *dto.ResetUser
 
 func (s *service) GetSubscribeLog(ctx context.Context, req *dto.GetSubscribeLogRequest) (*dto.GetSubscribeLogResponse, error) {
 	return s.selfSubs.GetSubscribeLog(ctx, req)
+}
+
+func (s *service) UserTrafficHistory(ctx context.Context, req *dto.TrafficHistoryRequest) (*dto.TrafficHistoryResponse, error) {
+	return s.selfSubs.UserTrafficHistory(ctx, req)
+}
+
+func (s *service) UserTrafficServers(ctx context.Context, req *dto.TrafficServersRequest) (*dto.TrafficServersResponse, error) {
+	return s.selfSubs.UserTrafficServers(ctx, req)
 }
 
 func (s *service) UpdateUserSubscribeNote(ctx context.Context, req *dto.UpdateUserSubscribeNoteRequest) error {

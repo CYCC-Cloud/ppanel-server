@@ -64,6 +64,7 @@ func RegisterHandlers(mux *asynq.ServeMux, deps Dependencies) {
 	mux.Handle(taskqueue.SchedulerResetTraffic, traffic.NewResetTrafficHandler(deps.Subscription, deps.Traffic.Redis))
 	mux.Handle(taskqueue.ScheduledBatchSendEmail, email.NewBatchEmailHandler(deps.Email))
 	mux.Handle(taskqueue.SchedulerTrafficStat, traffic.NewStatHandler(deps.Traffic.Statistics))
+	mux.Handle(taskqueue.SchedulerTrafficRollup, traffic.NewTrafficRollupHandler(deps.Traffic.Rollup))
 	// The log cleanup is independent from traffic aggregation so either task
 	// can retry without suppressing the other.
 	mux.Handle(taskqueue.SchedulerLogCleanup, traffic.NewLogCleanupHandler(deps.Traffic.Logs))

@@ -11,6 +11,9 @@ const (
 	SchedulerDispatchDomainEvents = "scheduler:events:dispatch"
 	SchedulerResetTraffic         = "scheduler:reset:traffic"
 	SchedulerTrafficStat          = "scheduler:traffic:stat"
-	SchedulerLogCleanup           = "scheduler:log:cleanup"
-	SchedulerFlushTraffic         = "scheduler:flush:traffic"
+	// SchedulerTrafficRollup rebuilds the traffic history's hourly and daily
+	// aggregates from the raw traffic log.
+	SchedulerTrafficRollup = "scheduler:traffic:rollup"
+	SchedulerLogCleanup    = "scheduler:log:cleanup"
+	SchedulerFlushTraffic  = "scheduler:flush:traffic"
 )

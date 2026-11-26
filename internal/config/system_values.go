@@ -91,6 +91,25 @@ func applySetting(field reflect.Value, valueType, value string) error {
 		field.Set(reflect.ValueOf(&parsed))
 		return err
 	}
+	// A pointer to an integer distinguishes an omitted setting from a zero
+	// one, which a request DTO needs: nil keeps the stored value.
+	if field.Kind() == reflect.Pointer && isSignedInt(field.Type().Elem().Kind()) {
+		if value == "" {
+			field.Set(reflect.Zero(field.Type()))
+			return nil
+		}
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		target := reflect.New(field.Type().Elem())
+		if target.Elem().OverflowInt(parsed) {
+			return fmt.Errorf("%d overflows %s", parsed, field.Type())
+		}
+		target.Elem().SetInt(parsed)
+		field.Set(target)
+		return nil
+	}
 
 	switch valueType {
 	case "string":
