@@ -840,6 +840,9 @@ func (*activationLogRepo) DeleteBefore(context.Context, time.Time) error { retur
 func (*activationLogRepo) DeleteBeforeBatch(context.Context, time.Time, int) (int64, error) {
 	return 0, errNotInScenario
 }
+func (*activationLogRepo) DeleteTypesBeforeBatch(context.Context, time.Time, []int, int) (int64, error) {
+	return 0, errNotInScenario
+}
 func (*activationLogRepo) FilterSystemLog(context.Context, *logEntity.FilterParams) ([]*logEntity.SystemLog, int64, error) {
 	return nil, 0, errNotInScenario
 }

@@ -315,6 +315,9 @@ func (r *Logs) DeleteBefore(context.Context, time.Time) error { return errUnsupp
 func (r *Logs) DeleteBeforeBatch(context.Context, time.Time, int) (int64, error) {
 	return 0, errUnsupported
 }
+func (r *Logs) DeleteTypesBeforeBatch(context.Context, time.Time, []int, int) (int64, error) {
+	return 0, errUnsupported
+}
 func (r *Logs) SumAmountByTypeAndObjectID(context.Context, uint8, int64) (int64, error) {
 	return 0, errUnsupported
 }

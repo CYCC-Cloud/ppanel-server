@@ -1,6 +1,7 @@
 package log
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -106,6 +107,44 @@ func TestExpirableTypesNeverIncludesFinancialLedgers(t *testing.T) {
 	for _, typ := range ExpirableTypes() {
 		if financial[typ] {
 			t.Fatalf("financial log type %d must not be expirable", typ)
+		}
+	}
+}
+
+// The two retentions partition the operational logs: the audit trail is the
+// ClearDays types plus the separated audit ones, and no type is in both, so a
+// row is never deleted by the wrong policy.
+func TestAuditAndExpirableTypesPartitionTheOperationalLogs(t *testing.T) {
+	operational := []int{
+		int(TypeEmailMessage),
+		int(TypeMobileMessage),
+		int(TypeSubscribe),
+		int(TypeSubscribeTraffic),
+		int(TypeServerTraffic),
+		int(TypeResetSubscribe),
+		int(TypeLogin),
+		int(TypeRegister),
+		int(TypeUserTrafficRank),
+		int(TypeServerTrafficRank),
+		int(TypeTrafficStat),
+	}
+	audit := map[int]bool{}
+	for _, typ := range AuditTypes() {
+		audit[typ] = true
+	}
+	if len(audit)+len(ExpirableTypes()) != len(operational) || len(audit) == 0 {
+		t.Fatalf("audit types %v and expirable types %v do not split the %d operational logs",
+			AuditTypes(), ExpirableTypes(), len(operational))
+	}
+	for _, typ := range ExpirableTypes() {
+		if audit[typ] {
+			t.Fatalf("log type %d expires under both retentions", typ)
+		}
+		operational = slices.DeleteFunc(operational, func(other int) bool { return other == typ })
+	}
+	for _, typ := range operational {
+		if !audit[typ] {
+			t.Fatalf("log type %d expired under neither retention", typ)
 		}
 	}
 }

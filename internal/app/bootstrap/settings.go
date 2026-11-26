@@ -105,6 +105,7 @@ func Log(ctx context.Context, deps *Dependencies) error {
 		AutoClear:                  true,
 		ClearDays:                  config.DefaultClearDays,
 		TrafficHourlyRetentionDays: config.DefaultTrafficHourlyRetentionDays,
+		AuditLogRetentionDays:      config.DefaultAuditLogRetentionDays,
 	}
 	decodeSettings(ctx, categoryLog, entries, &retention)
 	deps.updateRuntime(func(current *config.Runtime) { current.Log = retention })
