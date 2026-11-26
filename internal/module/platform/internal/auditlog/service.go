@@ -39,13 +39,14 @@ type Deps struct {
 	// OnLogSettingChanged propagates a committed retention change to the
 	// running configuration.
 	OnLogSettingChanged func(retention config.Log)
-	// LogRetention reads the current (mutable) retention configuration.
-	LogRetention func() (autoClear bool, clearDays int64)
+	// LogRetention reads the current (mutable) retention configuration:
+	// automatic clearing, its day count and the audit trail's.
+	LogRetention func() (autoClear bool, clearDays, auditDays int64)
 }
 
-func (d Deps) logRetention() (bool, int64) {
+func (d Deps) logRetention() (bool, int64, int64) {
 	if d.LogRetention == nil {
-		return false, 0
+		return false, 0, 0
 	}
 	return d.LogRetention()
 }

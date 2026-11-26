@@ -62,6 +62,10 @@ func TestValidateLogSettingRejectsDestructiveValues(t *testing.T) {
 		{name: "daily twenty-nine days", req: &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, TrafficDailyRetentionDays: day(29)}},
 		{name: "daily negative", req: &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, TrafficDailyRetentionDays: day(-1)}},
 		{name: "daily unbounded", req: &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, TrafficDailyRetentionDays: day(3651)}},
+		{name: "audit one day", req: &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, AuditLogRetentionDays: day(1)}},
+		{name: "audit twenty-nine days", req: &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, AuditLogRetentionDays: day(29)}},
+		{name: "audit negative", req: &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, AuditLogRetentionDays: day(-1)}},
+		{name: "audit unbounded", req: &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, AuditLogRetentionDays: day(3651)}},
 	} {
 		if err := validateLogSetting(tc.req); err == nil {
 			t.Fatalf("%s was accepted", tc.name)
@@ -71,6 +75,9 @@ func TestValidateLogSettingRejectsDestructiveValues(t *testing.T) {
 		{AutoClear: &enabled, ClearDays: 7, TrafficHourlyRetentionDays: day(7), TrafficDailyRetentionDays: day(0)},
 		{AutoClear: &enabled, ClearDays: 7, TrafficHourlyRetentionDays: day(3650), TrafficDailyRetentionDays: day(30)},
 		{AutoClear: &enabled, ClearDays: 7, TrafficDailyRetentionDays: day(3650)},
+		{AutoClear: &enabled, ClearDays: 7, AuditLogRetentionDays: day(0)},
+		{AutoClear: &enabled, ClearDays: 7, AuditLogRetentionDays: day(30)},
+		{AutoClear: &enabled, ClearDays: 7, AuditLogRetentionDays: day(3650)},
 	} {
 		if err := validateLogSetting(tc); err != nil {
 			t.Fatalf("valid traffic retention rejected: %v", err)
@@ -125,8 +132,8 @@ func TestUpdateLogSettingRecordsTheChange(t *testing.T) {
 		System: repo.NewSystemRepo(cache.NewConn(db, rds)),
 		Store:  storeTx{db: db, rds: rds},
 		OnLogSettingChanged: func(retention config.Log) {
-			propagated = append(propagated, fmt.Sprintf("%t/%d/%d/%d", retention.AutoClear, retention.ClearDays,
-				retention.HourlyTrafficRetentionDays(), retention.DailyTrafficRetentionDays()))
+			propagated = append(propagated, fmt.Sprintf("%t/%d/%d/%d/%d", retention.AutoClear, retention.ClearDays,
+				retention.HourlyTrafficRetentionDays(), retention.DailyTrafficRetentionDays(), retention.AuditRetentionDays()))
 		},
 	})
 	ctx := requestmeta.WithActor(requestmeta.With(context.Background(), requestmeta.New("203.0.113.9", "AdminPanel/1.0")), 9)
@@ -136,15 +143,16 @@ func TestUpdateLogSettingRecordsTheChange(t *testing.T) {
 	if err := svc.UpdateLogSetting(ctx, &dto.LogSetting{AutoClear: &enabled, ClearDays: 14}); err != nil {
 		t.Fatal(err)
 	}
-	// An omitted traffic retention keeps its stored value: the first save
-	// stores the defaults, an older admin UI does not reset them.
+	// An omitted traffic or audit retention keeps its stored value: the first
+	// save stores the defaults, an older admin UI does not reset them.
 	got, err := svc.GetLogSetting(ctx)
 	if err != nil || got.AutoClear == nil || !*got.AutoClear || got.ClearDays != 14 ||
 		got.TrafficHourlyRetentionDays == nil || *got.TrafficHourlyRetentionDays != config.DefaultTrafficHourlyRetentionDays ||
-		got.TrafficDailyRetentionDays == nil || *got.TrafficDailyRetentionDays != 0 {
+		got.TrafficDailyRetentionDays == nil || *got.TrafficDailyRetentionDays != 0 ||
+		got.AuditLogRetentionDays == nil || *got.AuditLogRetentionDays != config.DefaultAuditLogRetentionDays {
 		t.Fatalf("setting = %+v (err %v)", got, err)
 	}
-	if len(propagated) != 1 || propagated[0] != "true/14/90/0" {
+	if len(propagated) != 1 || propagated[0] != "true/14/90/0/365" {
 		t.Fatalf("propagated = %v, want the committed setting", propagated)
 	}
 
@@ -153,6 +161,7 @@ func TestUpdateLogSettingRecordsTheChange(t *testing.T) {
 		ClearDays:                  14,
 		TrafficHourlyRetentionDays: days(30),
 		TrafficDailyRetentionDays:  days(365),
+		AuditLogRetentionDays:      days(30),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -162,10 +171,11 @@ func TestUpdateLogSettingRecordsTheChange(t *testing.T) {
 	}
 	got, err = svc.GetLogSetting(ctx)
 	if err != nil || got.TrafficHourlyRetentionDays == nil || *got.TrafficHourlyRetentionDays != 30 ||
-		got.TrafficDailyRetentionDays == nil || *got.TrafficDailyRetentionDays != 365 {
+		got.TrafficDailyRetentionDays == nil || *got.TrafficDailyRetentionDays != 365 ||
+		got.AuditLogRetentionDays == nil || *got.AuditLogRetentionDays != 30 {
 		t.Fatalf("setting after omitted fields = %+v (err %v)", got, err)
 	}
-	if len(propagated) != 3 || propagated[1] != "true/14/30/365" || propagated[2] != "true/14/30/365" {
+	if len(propagated) != 3 || propagated[1] != "true/14/30/365/30" || propagated[2] != "true/14/30/365/30" {
 		t.Fatalf("propagated = %v, want the kept compound retention", propagated)
 	}
 
@@ -181,7 +191,7 @@ func TestUpdateLogSettingRecordsTheChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	if action.Action != "settings.update" || action.Object != "log" || action.ActorID != 9 || action.ClientIP != "203.0.113.9" ||
-		action.Detail != "keys: AutoClear, ClearDays, TrafficHourlyRetentionDays, TrafficDailyRetentionDays; auto_clear=true clear_days=14 traffic_hourly_retention_days=90 traffic_daily_retention_days=0" {
+		action.Detail != "keys: AutoClear, ClearDays, TrafficHourlyRetentionDays, TrafficDailyRetentionDays, AuditLogRetentionDays; auto_clear=true clear_days=14 traffic_hourly_retention_days=90 traffic_daily_retention_days=0 audit_log_retention_days=365" {
 		t.Fatalf("action = %+v", action)
 	}
 
@@ -191,6 +201,9 @@ func TestUpdateLogSettingRecordsTheChange(t *testing.T) {
 	}
 	if err := svc.UpdateLogSetting(ctx, &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, TrafficDailyRetentionDays: days(7)}); err == nil {
 		t.Fatal("a seven-day traffic daily retention was accepted")
+	}
+	if err := svc.UpdateLogSetting(ctx, &dto.LogSetting{AutoClear: &enabled, ClearDays: 7, AuditLogRetentionDays: days(7)}); err == nil {
+		t.Fatal("a seven-day audit retention was accepted")
 	}
 	var n int64
 	if err := db.Model(&log.SystemLog{}).Count(&n).Error; err != nil || n != 3 || len(propagated) != 3 {

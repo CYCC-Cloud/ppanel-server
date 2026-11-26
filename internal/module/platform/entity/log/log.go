@@ -72,24 +72,37 @@ func (t Type) Uint8() uint8 {
 	return uint8(t)
 }
 
-// ExpirableTypes returns the operational log classes that may be removed by
-// the configured retention policy. Financial logs are deliberately absent:
-// balance, commission and gift entries are durable ledgers and are also used
-// by business queries, so treating them as disposable logs corrupts history.
-// Keep this as an allowlist so newly-added log types are retained by default.
+// ExpirableTypes returns the operational log classes the ClearDays retention
+// removes: the traffic detail and ranking records it is meant to bound. The
+// audit classes (messages, subscriptions, logins and registrations) expire
+// under their own AuditTypes retention. Financial logs are deliberately
+// absent: balance, commission and gift entries are durable ledgers and are
+// also used by business queries, so treating them as disposable logs corrupts
+// history. Keep this as an allowlist so newly-added log types are retained by
+// default.
 func ExpirableTypes() []int {
+	return []int{
+		int(TypeSubscribeTraffic),
+		int(TypeServerTraffic),
+		int(TypeUserTrafficRank),
+		int(TypeServerTrafficRank),
+		int(TypeTrafficStat),
+	}
+}
+
+// AuditTypes returns the audit classes removed by the audit retention: the
+// messages sent, the subscriptions fetched, and the logins and registrations
+// recorded. They are separate from ExpirableTypes because that trail is what
+// an incident investigation reads, so its retention is set on its own; a zero
+// retention keeps these rows forever.
+func AuditTypes() []int {
 	return []int{
 		int(TypeEmailMessage),
 		int(TypeMobileMessage),
 		int(TypeSubscribe),
-		int(TypeSubscribeTraffic),
-		int(TypeServerTraffic),
 		int(TypeResetSubscribe),
 		int(TypeLogin),
 		int(TypeRegister),
-		int(TypeUserTrafficRank),
-		int(TypeServerTrafficRank),
-		int(TypeTrafficStat),
 	}
 }
 

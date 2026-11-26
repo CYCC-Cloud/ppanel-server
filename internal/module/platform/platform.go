@@ -164,8 +164,9 @@ type Deps struct {
 	// OnLogSettingChanged propagates a committed retention change to the
 	// running configuration.
 	OnLogSettingChanged func(retention config.Log)
-	// LogRetention reads the current (mutable) retention configuration.
-	LogRetention func() (autoClear bool, clearDays int64)
+	// LogRetention reads the current (mutable) retention configuration:
+	// automatic clearing, its day count and the audit trail's.
+	LogRetention func() (autoClear bool, clearDays, auditDays int64)
 	// TrafficRetention prunes the network's raw traffic log with the system
 	// log when the retention settings ask for it.
 	TrafficRetention TrafficLogPruner

@@ -93,7 +93,10 @@ func TestDeleteBeforePreservesFinancialLedgers(t *testing.T) {
 	if err := db.Order("type ASC").Find(&remaining).Error; err != nil {
 		t.Fatal(err)
 	}
-	want := []uint8{logEntity.TypeBalance.Uint8(), logEntity.TypeCommission.Uint8(), logEntity.TypeGift.Uint8(), 99}
+	// The financial ledgers and an unknown type stay; the audit types also
+	// stay now that they expire under their own retention.
+	want := []uint8{logEntity.TypeEmailMessage.Uint8(), logEntity.TypeLogin.Uint8(),
+		logEntity.TypeBalance.Uint8(), logEntity.TypeCommission.Uint8(), logEntity.TypeGift.Uint8(), 99}
 	if len(remaining) != len(want) {
 		t.Fatalf("remaining types = %v, want %v", logTypes(remaining), want)
 	}
@@ -110,6 +113,54 @@ func logTypes(rows []logEntity.SystemLog) []uint8 {
 		result = append(result, row.Type)
 	}
 	return result
+}
+
+// A typed delete removes only the given types, only before the threshold,
+// and no more than the batch limit.
+func TestDeleteTypesBeforeBatchDeletesOnlyTheGivenTypes(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:system-log-types-%d?mode=memory&cache=shared", time.Now().UnixNano())), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&logEntity.SystemLog{}); err != nil {
+		t.Fatal(err)
+	}
+
+	oldDate := "2025-01-01"
+	rows := []*logEntity.SystemLog{
+		{Type: logEntity.TypeLogin.Uint8(), Date: oldDate, Content: `{}`},
+		{Type: logEntity.TypeEmailMessage.Uint8(), Date: oldDate, Content: `{}`},
+		{Type: logEntity.TypeSubscribe.Uint8(), Date: oldDate, Content: `{}`},
+		{Type: logEntity.TypeSubscribeTraffic.Uint8(), Date: oldDate, Content: `{}`},
+		{Type: logEntity.TypeBalance.Uint8(), Date: oldDate, Content: `{}`},
+		{Type: logEntity.TypeLogin.Uint8(), Date: "2025-03-01", Content: `{}`},
+	}
+	if err := db.Create(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	deleted, err := NewLogRepo(db).DeleteTypesBeforeBatch(context.Background(),
+		time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC), logEntity.AuditTypes(), 2)
+	if err != nil || deleted != 2 {
+		t.Fatalf("deleted %d rows (err %v), want the two oldest audit rows", deleted, err)
+	}
+
+	var remaining []logEntity.SystemLog
+	if err := db.Order("id ASC").Find(&remaining).Error; err != nil {
+		t.Fatal(err)
+	}
+	want := []uint8{
+		logEntity.TypeSubscribe.Uint8(), logEntity.TypeSubscribeTraffic.Uint8(),
+		logEntity.TypeBalance.Uint8(), logEntity.TypeLogin.Uint8(),
+	}
+	if len(remaining) != len(want) {
+		t.Fatalf("remaining types = %v, want %v", logTypes(remaining), want)
+	}
+	for i, typ := range want {
+		if remaining[i].Type != typ {
+			t.Fatalf("remaining types = %v, want %v", logTypes(remaining), want)
+		}
+	}
 }
 
 func TestFilterSystemLogDateRanges(t *testing.T) {

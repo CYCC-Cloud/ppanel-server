@@ -226,13 +226,19 @@ func (m *logRepo) DeleteBefore(ctx context.Context, end time.Time) error {
 }
 
 func (m *logRepo) DeleteBeforeBatch(ctx context.Context, end time.Time, limit int) (int64, error) {
-	if limit <= 0 {
+	return m.DeleteTypesBeforeBatch(ctx, end, log.ExpirableTypes(), limit)
+}
+
+// DeleteTypesBeforeBatch deletes up to limit system logs of types whose date
+// is before the given end date.
+func (m *logRepo) DeleteTypesBeforeBatch(ctx context.Context, end time.Time, types []int, limit int) (int64, error) {
+	if limit <= 0 || len(types) == 0 {
 		return 0, nil
 	}
 	var ids []int64
 	if err := m.WithContext(ctx).Model(&log.SystemLog{}).
 		Select("id").
-		Where("date < ? AND type IN ?", end.Format(time.DateOnly), log.ExpirableTypes()).
+		Where("date < ? AND type IN ?", end.Format(time.DateOnly), types).
 		Order("id ASC").Limit(limit).Pluck("id", &ids).Error; err != nil {
 		return 0, err
 	}

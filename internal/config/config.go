@@ -447,6 +447,10 @@ type Log struct {
 	// the daily totals forever.
 	TrafficHourlyRetentionDays int64 `yaml:"TrafficHourlyRetentionDays" default:"90"`
 	TrafficDailyRetentionDays  int64 `yaml:"TrafficDailyRetentionDays" default:"0"`
+	// AuditLogRetentionDays is the retention of the audit trail (messages,
+	// subscriptions, logins and registrations), in days. A zero value keeps
+	// it forever.
+	AuditLogRetentionDays int64 `yaml:"AuditLogRetentionDays" default:"365"`
 }
 
 // The retention the traffic history may be configured with, in days. The
@@ -461,6 +465,12 @@ const (
 	MaxTrafficDailyRetentionDays      int64 = 3650
 	// DefaultClearDays is the seeded auto-clear retention of the system log.
 	DefaultClearDays int64 = 7
+	// The audit trail retention: a year by default, either zero (forever) or
+	// at least a month, so a shortened retention still covers a month of
+	// incidents.
+	DefaultAuditLogRetentionDays int64 = 365
+	MinAuditLogRetentionDays     int64 = 30
+	MaxAuditLogRetentionDays     int64 = 3650
 )
 
 // HourlyTrafficRetentionDays returns the hourly retention in days, with the
@@ -480,6 +490,15 @@ func (l Log) DailyTrafficRetentionDays() int64 {
 		return 0
 	}
 	return l.TrafficDailyRetentionDays
+}
+
+// AuditRetentionDays returns the audit retention in days; zero keeps the
+// audit trail forever.
+func (l Log) AuditRetentionDays() int64 {
+	if l.AuditLogRetentionDays < 0 {
+		return 0
+	}
+	return l.AuditLogRetentionDays
 }
 
 type NodeDBConfig struct {

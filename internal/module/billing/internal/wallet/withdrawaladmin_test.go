@@ -80,6 +80,9 @@ func (*withdrawalTestLogs) DeleteBefore(context.Context, time.Time) error { retu
 func (*withdrawalTestLogs) DeleteBeforeBatch(context.Context, time.Time, int) (int64, error) {
 	return 0, nil
 }
+func (*withdrawalTestLogs) DeleteTypesBeforeBatch(context.Context, time.Time, []int, int) (int64, error) {
+	return 0, nil
+}
 func (*withdrawalTestLogs) SumAmountByTypeAndObjectID(context.Context, uint8, int64) (int64, error) {
 	return 0, nil
 }

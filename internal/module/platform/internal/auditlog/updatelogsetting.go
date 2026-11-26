@@ -44,14 +44,19 @@ func (s *Service) UpdateLogSetting(ctx context.Context, req *dto.LogSetting) err
 		storedRetention := storedLogSetting(ctx, stored)
 		hourly := storedRetention.HourlyTrafficRetentionDays()
 		daily := storedRetention.DailyTrafficRetentionDays()
+		audit := storedRetention.AuditRetentionDays()
 		if req.TrafficHourlyRetentionDays != nil {
 			hourly = *req.TrafficHourlyRetentionDays
 		}
 		if req.TrafficDailyRetentionDays != nil {
 			daily = *req.TrafficDailyRetentionDays
 		}
+		if req.AuditLogRetentionDays != nil {
+			audit = *req.AuditLogRetentionDays
+		}
 		retention.TrafficHourlyRetentionDays = hourly
 		retention.TrafficDailyRetentionDays = daily
+		retention.AuditLogRetentionDays = audit
 
 		if err := systemStore.UpdateValueByCategoryKey(ctx, "log", "AutoClear", strconv.FormatBool(*req.AutoClear), "bool"); err != nil {
 			return err
@@ -65,11 +70,14 @@ func (s *Service) UpdateLogSetting(ctx context.Context, req *dto.LogSetting) err
 		if err := systemStore.UpdateValueByCategoryKey(ctx, "log", "TrafficDailyRetentionDays", strconv.FormatInt(daily, 10), "int64"); err != nil {
 			return err
 		}
+		if err := systemStore.UpdateValueByCategoryKey(ctx, "log", "AuditLogRetentionDays", strconv.FormatInt(audit, 10), "int64"); err != nil {
+			return err
+		}
 		row, err := log.NewAdminActionLog(log.AdminActionFrom(ctx, log.AdminAction{
 			Action: "settings.update",
 			Object: "log",
-			Detail: fmt.Sprintf("keys: AutoClear, ClearDays, TrafficHourlyRetentionDays, TrafficDailyRetentionDays; auto_clear=%t clear_days=%d traffic_hourly_retention_days=%d traffic_daily_retention_days=%d",
-				*req.AutoClear, req.ClearDays, hourly, daily),
+			Detail: fmt.Sprintf("keys: AutoClear, ClearDays, TrafficHourlyRetentionDays, TrafficDailyRetentionDays, AuditLogRetentionDays; auto_clear=%t clear_days=%d traffic_hourly_retention_days=%d traffic_daily_retention_days=%d audit_log_retention_days=%d",
+				*req.AutoClear, req.ClearDays, hourly, daily, audit),
 		}))
 		if err != nil {
 			return err
@@ -93,6 +101,7 @@ func storedLogSetting(ctx context.Context, entries []*system.System) config.Log 
 		AutoClear:                  true,
 		ClearDays:                  config.DefaultClearDays,
 		TrafficHourlyRetentionDays: config.DefaultTrafficHourlyRetentionDays,
+		AuditLogRetentionDays:      config.DefaultAuditLogRetentionDays,
 	}
 	if err := config.DecodeSystemConfig(entries, &retention); err != nil {
 		logger.WithContext(ctx).Errorw("[UpdateLogSetting] stored log settings could not be applied, the defaults stay",
@@ -114,6 +123,11 @@ func validateLogSetting(req *dto.LogSetting) error {
 		(*daily < config.MinTrafficDailyRetentionDays || *daily > config.MaxTrafficDailyRetentionDays) {
 		return xerr.Errorf(xerr.InvalidParams, "traffic daily retention must be 0 (keep forever) or between %d and %d days",
 			config.MinTrafficDailyRetentionDays, config.MaxTrafficDailyRetentionDays)
+	}
+	if audit := req.AuditLogRetentionDays; audit != nil && *audit != 0 &&
+		(*audit < config.MinAuditLogRetentionDays || *audit > config.MaxAuditLogRetentionDays) {
+		return xerr.Errorf(xerr.InvalidParams, "audit log retention must be 0 (keep forever) or between %d and %d days",
+			config.MinAuditLogRetentionDays, config.MaxAuditLogRetentionDays)
 	}
 	return nil
 }

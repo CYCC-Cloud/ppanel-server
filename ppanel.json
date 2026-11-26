@@ -14691,6 +14691,11 @@
                 "clear_days"
             ],
             "properties": {
+                "audit_log_retention_days": {
+                    "type": "integer",
+                    "maximum": 3650,
+                    "minimum": 0
+                },
                 "auto_clear": {
                     "type": "boolean"
                 },

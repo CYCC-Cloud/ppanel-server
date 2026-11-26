@@ -59,6 +59,7 @@ type LogRepo interface {
 	FindByDatesType(ctx context.Context, dates []string, typ uint8) ([]*log.SystemLog, error)
 	DeleteBefore(ctx context.Context, end time.Time) error
 	DeleteBeforeBatch(ctx context.Context, end time.Time, limit int) (int64, error)
+	DeleteTypesBeforeBatch(ctx context.Context, end time.Time, types []int, limit int) (int64, error)
 	SumAmountByTypeAndObjectID(ctx context.Context, typ uint8, objectID int64) (int64, error)
 }
 

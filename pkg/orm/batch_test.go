@@ -70,3 +70,30 @@ func TestDeleteBeforeStopsAtAFailureAndCountsTheBatchesBefore(t *testing.T) {
 		t.Fatalf("deleted %d in %d calls (err %v); want the failure after 10", deleted, rows.calls, err)
 	}
 }
+
+// typeBatchRows deletes up to the limit of the requested types per call.
+type typeBatchRows struct {
+	left, calls int
+	types       []int
+}
+
+var _ TypeBatchDeleter = (*typeBatchRows)(nil)
+
+func (r *typeBatchRows) DeleteTypesBeforeBatch(_ context.Context, _ time.Time, types []int, limit int) (int64, error) {
+	r.calls++
+	r.types = types
+	n := min(r.left, limit)
+	r.left -= n
+	return int64(n), nil
+}
+
+func TestDeleteTypesBeforeDeletesInBatches(t *testing.T) {
+	rows := &typeBatchRows{left: 25}
+	deleted, err := DeleteTypesBefore(context.Background(), rows, []int{30, 31}, time.Now(), 10)
+	if err != nil || deleted != 25 || rows.calls != 3 {
+		t.Fatalf("deleted %d in %d calls (err %v); want 25 in 3", deleted, rows.calls, err)
+	}
+	if len(rows.types) != 2 || rows.types[0] != 30 || rows.types[1] != 31 {
+		t.Fatalf("deleted types = %v, want the requested set", rows.types)
+	}
+}

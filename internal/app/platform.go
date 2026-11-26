@@ -38,9 +38,9 @@ func newPlatformModule(store repository.Store, srv *Application) platform.Servic
 				current.Log = retention
 			})
 		},
-		LogRetention: func() (bool, int64) {
+		LogRetention: func() (bool, int64, int64) {
 			current := srv.Runtime.Config().Log
-			return current.AutoClear, current.ClearDays
+			return current.AutoClear, current.ClearDays, current.AuditRetentionDays()
 		},
 		TrafficRetention: platformTrafficRetention{srv},
 		Reinitialize:     srv.Runtime.Reinitialize,

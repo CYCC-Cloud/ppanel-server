@@ -71,7 +71,7 @@ func (s *Service) FilterServerTrafficLog(ctx context.Context, req *dto.FilterSer
 			return nil, xerr.Wrapf(err, xerr.ERROR, "corrupt server traffic log %d: %v", item.Id, err)
 		}
 		hasDetails := true
-		if autoClear, clearDays := s.deps.logRetention(); autoClear {
+		if autoClear, clearDays, _ := s.deps.logRetention(); autoClear {
 			day, err := time.ParseInLocation(time.DateOnly, item.Date, timeutil.Location())
 			hasDetails = err == nil && !day.Before(now.AddDate(0, 0, -int(clearDays)))
 		}
